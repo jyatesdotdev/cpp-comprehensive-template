@@ -34,16 +34,16 @@ struct Crtp {
 /// @brief CRTP mixin that adds `serialize()` / `deserialize()` by delegating to Derived.
 /// @tparam Derived Must implement `do_serialize()` and `do_deserialize(std::string_view)`.
 template <typename Derived>
-struct Serializable : Crtp<Derived> {
+struct Serializable {
     /// @brief Serialize the object to a string.
     /// @return The serialized representation.
     [[nodiscard]] std::string serialize() const {
-        return this->self().do_serialize();
+        return static_cast<const Derived&>(*this).do_serialize();
     }
     /// @brief Deserialize from a string, populating the object's state.
     /// @param data The serialized data.
     void deserialize(std::string_view data) {
-        this->self().do_deserialize(data);
+        static_cast<Derived&>(*this).do_deserialize(data);
     }
 };
 
@@ -52,11 +52,11 @@ struct Serializable : Crtp<Derived> {
 /// @brief CRTP mixin that adds a `print()` method by delegating to `Derived::to_string()`.
 /// @tparam Derived Must implement `std::string to_string() const`.
 template <typename Derived>
-struct Printable : Crtp<Derived> {
+struct Printable {
     /// @brief Print the object's string representation to an output stream.
     /// @param os The output stream (defaults to std::cout).
     void print(std::ostream& os = std::cout) const {
-        os << this->self().to_string() << '\n';
+        os << static_cast<const Derived&>(*this).to_string() << '\n';
     }
 };
 
@@ -65,7 +65,7 @@ struct Printable : Crtp<Derived> {
 /// @brief CRTP mixin that provides `==` and `<=>` operators via `Derived::compare_key()`.
 /// @tparam Derived Must implement a `compare_key() const` returning a three-way-comparable value.
 template <typename Derived>
-struct Comparable : Crtp<Derived> {
+struct Comparable {
     [[nodiscard]] friend bool operator==(const Derived& a, const Derived& b) {
         return a.compare_key() == b.compare_key();
     }
