@@ -1,0 +1,115 @@
+---
+# Security-focused clang-tidy configuration
+#
+# Check groups:
+#   cert-*                      — CERT C++ secure coding rules
+#   bugprone-*                  — common bug patterns (use-after-move, narrowing, etc.)
+#   clang-analyzer-security.*   — security-specific static analysis
+#   clang-analyzer-core.*       — null deref, divide-by-zero, uninitialized
+#   clang-analyzer-cplusplus.*  — C++ specific (new/delete, move, inner-pointer)
+#   cppcoreguidelines-*        — C++ Core Guidelines
+#   modernize-*                — modern C++ idioms
+#   performance-*              — performance anti-patterns
+#   readability-*              — code clarity
+#   concurrency-*              — thread-safety issues
+#
+Checks: >
+  -*,
+  bugprone-*,
+  cert-*,
+  clang-analyzer-core.*,
+  clang-analyzer-cplusplus.*,
+  clang-analyzer-deadcode.*,
+  clang-analyzer-security.*,
+  clang-analyzer-unix.*,
+  concurrency-*,
+  cppcoreguidelines-*,
+  modernize-*,
+  performance-*,
+  readability-*,
+  -modernize-use-trailing-return-type,
+  -readability-identifier-length,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -readability-magic-numbers
+
+# Treat security and high-severity checks as errors
+WarningsAsErrors: >
+  cert-*,
+  bugprone-use-after-move,
+  bugprone-dangling-handle,
+  bugprone-dynamic-static-initializers,
+  bugprone-infinite-loop,
+  bugprone-signed-char-misuse,
+  bugprone-sizeof-expression,
+  bugprone-string-constructor,
+  bugprone-undefined-memory-manipulation,
+  clang-analyzer-security.*,
+  clang-analyzer-core.NullDereference,
+  clang-analyzer-core.UndefinedBinaryOperatorResult,
+  clang-analyzer-cplusplus.NewDeleteLeaks,
+  concurrency-*
+
+HeaderFilterRegex: 'include/.*\.h$'
+
+FormatStyle: file
+
+CheckOptions:
+  # -- cert checks --
+  - key: cert-dcl16-c.NewSuffixes
+    value: 'L;LL;LU;LLU'
+  - key: cert-oop54-cpp.WarnOnlyIfThisHasSuspiciousField
+    value: false
+
+  # -- bugprone --
+  - key: bugprone-argument-comment.StrictMode
+    value: true
+  - key: bugprone-assert-side-effect.AssertMacros
+    value: 'assert;ASSERT;Q_ASSERT'
+  - key: bugprone-sizeof-expression.WarnOnSizeOfIntegerExpression
+    value: true
+  - key: bugprone-suspicious-string-compare.WarnOnLogicalNotComparison
+    value: true
+
+  # -- cppcoreguidelines --
+  - key: cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor
+    value: true
+  - key: cppcoreguidelines-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic
+    value: true
+
+  # -- modernize --
+  - key: modernize-use-override.IgnoreDestructors
+    value: true
+  - key: modernize-loop-convert.MinConfidence
+    value: reasonable
+  - key: modernize-use-nullptr.NullMacros
+    value: 'NULL'
+  - key: modernize-use-auto.MinTypeNameLength
+    value: 5
+
+  # -- performance --
+  - key: performance-move-const-arg.CheckTriviallyCopyableMove
+    value: false
+  - key: performance-unnecessary-value-param.AllowedTypes
+    value: 'shared_ptr'
+
+  # -- readability --
+  - key: readability-function-cognitive-complexity.Threshold
+    value: 25
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.FunctionCase
+    value: camelBack
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case
+  - key: readability-identifier-naming.ConstantCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.NamespaceCase
+    value: lower_case
+  - key: readability-identifier-naming.PrivateMemberSuffix
+    value: '_'
+
+# ── Suppression Examples ─────────────────────────────────────────────
+# Per-line:    // NOLINT(cert-err58-cpp)
+# Per-line:    // NOLINTNEXTLINE(bugprone-narrowing-conversions)
+# Per-file:    Add to .clang-tidy-ignore (one path per line, glob supported)
+# Per-check:   Add -check-name to the Checks list above

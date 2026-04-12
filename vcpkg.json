@@ -1,0 +1,33 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "cpp-comprehensive-template",
+  "version": "1.0.0",
+  "description": "Modern C++ comprehensive project template",
+  "dependencies": [
+    "fmt",
+    "spdlog",
+    "nlohmann-json",
+    "catch2",
+    "benchmark",
+    "cpp-httplib",
+    "sqlite3"
+  ],
+  "features": {
+    "rendering": {
+      "description": "OpenGL rendering support",
+      "dependencies": [
+        "glfw3",
+        "glm",
+        "glad"
+      ]
+    },
+    "boost": {
+      "description": "Boost library support",
+      "dependencies": [
+        "boost-asio",
+        "boost-beast",
+        "boost-program-options"
+      ]
+    }
+  }
+}

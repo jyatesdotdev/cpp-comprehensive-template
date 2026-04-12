@@ -1,0 +1,76 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  VCPKG_ROOT: /usr/local/share/vcpkg
+
+jobs:
+  static-analysis:
+    name: Static Analysis (clang-tidy + cppcheck)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-tidy cppcheck
+
+      - name: Setup vcpkg
+        run: |
+          vcpkg install
+          
+      - name: Configure
+        run: cmake --preset security-scan
+
+      - name: Build
+        run: cmake --build --preset security-scan 2>&1 | tee build.log
+
+      - name: Check for findings
+        if: always()
+        run: |
+          if grep -qE 'warning:.*\[cert-|warning:.*\[clang-analyzer-security' build.log; then
+            echo "::error::High-severity security findings detected"
+            exit 1
+          fi
+
+  sanitizers-asan-ubsan:
+    name: ASan + UBSan
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup vcpkg
+        run: vcpkg install
+
+      - name: Configure
+        run: cmake --preset asan-ubsan
+
+      - name: Build
+        run: cmake --build --preset asan-ubsan
+
+      - name: Test
+        run: ctest --preset asan-ubsan
+
+  sanitizers-tsan:
+    name: ThreadSanitizer
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup vcpkg
+        run: vcpkg install
+
+      - name: Configure
+        run: cmake --preset tsan
+
+      - name: Build
+        run: cmake --build --preset tsan
+
+      - name: Test
+        run: ctest --preset tsan

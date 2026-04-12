@@ -1,0 +1,53 @@
+# ── VCS ──────────────────────────────────────────────────────────────
+.git
+.gitignore
+
+# ── Build artifacts ──────────────────────────────────────────────────
+build/
+cmake-build-*/
+out/
+*.o
+*.a
+*.so
+*.dylib
+
+# ── Not needed for Docker build ──────────────────────────────────────
+docs/
+tests/
+benchmarks/
+.github/
+
+# ── Docker files ─────────────────────────────────────────────────────
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# ── IDE / Editor ─────────────────────────────────────────────────────
+.vscode/
+.idea/
+.vs/
+*.swp
+.cache/
+
+# ── OS files ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Package manager artifacts ────────────────────────────────────────
+vcpkg_installed/
+_deps/
+.conan/
+
+# ── Coverage / Profiling ────────────────────────────────────────────
+*.gcda
+*.gcno
+*.profraw
+*.profdata
+coverage/
+
+# ── Misc ─────────────────────────────────────────────────────────────
+*.md
+LICENSE
+Doxyfile
+.clang-tidy
+.clang-format
