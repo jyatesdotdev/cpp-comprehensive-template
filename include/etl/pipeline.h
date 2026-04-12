@@ -61,6 +61,33 @@ struct Take {
     std::size_t n;  ///< Maximum number of elements to yield.
 };
 
+// ── Element-type trait (portable across GCC / Clang) ────────────────
+
+/// @brief Deduces the element type produced by a pipeline stage.
+template <typename S> struct element_type;
+
+template <typename R>
+struct element_type<Source<R>> { using type = typename R::value_type; };
+
+template <typename P, typename Fn>
+struct element_type<Map<P, Fn>> {
+    using type = std::invoke_result_t<Fn, typename element_type<P>::type>;
+};
+
+template <typename P, typename Pred>
+struct element_type<Filter<P, Pred>> { using type = typename element_type<P>::type; };
+
+template <typename P, typename Fn>
+struct element_type<FlatMap<P, Fn>> {
+    using type = typename std::invoke_result_t<Fn, typename element_type<P>::type>::value_type;
+};
+
+template <typename P>
+struct element_type<Take<P>> { using type = typename element_type<P>::type; };
+
+template <typename S>
+using element_type_t = typename element_type<S>::type;
+
 // ── Pipeline wrapper (provides fluent API) ──────────────────────────
 
 /// @brief Composable lazy pipeline with a fluent API.
@@ -116,7 +143,7 @@ public:
     /// @return std::vector containing all pipeline output elements.
     template <typename Out = void>
     auto collect() const {
-        using elem_t = decltype(emit_one(stage_));
+        using elem_t = element_type_t<Stage>;
         std::vector<elem_t> out;
         evaluate(stage_, [&](auto&& v) { out.push_back(std::forward<decltype(v)>(v)); });
         return out;
@@ -158,24 +185,6 @@ private:
     Stage stage_;
 
     // ── Lazy evaluation engine (recursive over stage types) ─────────
-
-    /// Deduce the element type produced by a stage (never called at runtime).
-    template <typename R>
-    static auto emit_one(const Source<R>&) -> typename R::value_type;
-
-    template <typename P, typename Fn>
-    static auto emit_one(const Map<P, Fn>&)
-        -> std::invoke_result_t<Fn, decltype(emit_one(std::declval<P>()))>;
-
-    template <typename P, typename Pred>
-    static auto emit_one(const Filter<P, Pred>&) -> decltype(emit_one(std::declval<P>()));
-
-    template <typename P, typename Fn>
-    static auto emit_one(const FlatMap<P, Fn>&)
-        -> typename std::invoke_result_t<Fn, decltype(emit_one(std::declval<P>()))>::value_type;
-
-    template <typename P>
-    static auto emit_one(const Take<P>&) -> decltype(emit_one(std::declval<P>()));
 
     // ── evaluate: push each element through stages into a callback ──
 
