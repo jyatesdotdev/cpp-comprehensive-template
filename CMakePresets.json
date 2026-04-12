@@ -97,6 +97,7 @@
     { "name": "default", "configurePreset": "default" },
     { "name": "debug", "configurePreset": "debug" },
     { "name": "release", "configurePreset": "release" },
+    { "name": "ci", "configurePreset": "ci" },
     { "name": "asan", "configurePreset": "asan" },
     { "name": "ubsan", "configurePreset": "ubsan" },
     { "name": "tsan", "configurePreset": "tsan" },
@@ -108,6 +109,11 @@
     {
       "name": "default",
       "configurePreset": "default",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "ci",
+      "configurePreset": "ci",
       "output": { "outputOnFailure": true }
     },
     {

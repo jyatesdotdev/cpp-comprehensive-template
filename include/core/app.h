@@ -3,6 +3,7 @@
 /// @file app.h
 /// @brief Core application framework with RAII lifecycle management.
 
+#include <memory>
 #include <string>
 #include <string_view>
 
