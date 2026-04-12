@@ -80,7 +80,7 @@ inline void apply_config_defaults(CLI::App& app,
 // ── Custom Validators ───────────────────────────────────────────────
 
 /// @brief Validates that a value is a valid TCP/UDP port (1–65535).
-inline CLI::Validator PortRange{"PORT", [](const std::string& input) -> std::string {
+inline CLI::Validator PortRange{[](std::string& input) -> std::string {
     try {
         int port = std::stoi(input);
         if (port < 1 || port > 65535)
@@ -89,16 +89,15 @@ inline CLI::Validator PortRange{"PORT", [](const std::string& input) -> std::str
         return "Invalid port number: " + input;
     }
     return {};
-}};
+}, "PORT"};
 
 /// @brief Validates that a path exists and is a regular file.
-inline CLI::Validator FileExists{"FILE",
-                                 CLI::ExistingFile.description("FILE")};
+inline CLI::Validator FileExists = CLI::ExistingFile.description("FILE");
 
 /// @brief Validates that a string is non-empty.
-inline CLI::Validator NonEmpty{"NON_EMPTY", [](const std::string& input) -> std::string {
+inline CLI::Validator NonEmpty{[](std::string& input) -> std::string {
     if (input.empty()) return "Value must not be empty";
     return {};
-}};
+}, "NON_EMPTY"};
 
 } // namespace cli

@@ -49,11 +49,11 @@ int main() {
 
     // ── Insert via Repository ───────────────────────────────────────
     std::printf("=== Repository CRUD ===\n");
-    users.insert({"", "Alice", "alice@example.com", 30});
-    users.insert({"", "Bob", "bob@example.com", 25});
+    users.insert({0, "Alice", "alice@example.com", 30});
+    users.insert({0, "Bob", "bob@example.com", 25});
 
     for (auto& u : users.find_all())
-        std::printf("  [%lld] %s <%s> age %d\n", u.id, u.name.c_str(),
+        std::printf("  [%ld] %s <%s> age %d\n", static_cast<long>(u.id), u.name.c_str(),
                     u.email.c_str(), u.age);
 
     // ── Find by ID ──────────────────────────────────────────────────
@@ -68,9 +68,9 @@ int main() {
     std::printf("\n=== Transaction ===\n");
     try {
         db.transaction([&] {
-            users.insert({"", "Charlie", "charlie@example.com", 35});
+            users.insert({0, "Charlie", "charlie@example.com", 35});
             // Duplicate email triggers UNIQUE constraint → rollback
-            users.insert({"", "Charlie2", "charlie@example.com", 40});
+            users.insert({0, "Charlie2", "charlie@example.com", 40});
         });
     } catch (const SqliteError& e) {
         std::printf("  Rolled back: %s\n", e.what());

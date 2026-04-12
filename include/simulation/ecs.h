@@ -8,6 +8,8 @@
 #include <any>
 #include <cstdint>
 #include <functional>
+#include <optional>
+#include <tuple>
 #include <typeindex>
 #include <unordered_map>
 #include <vector>
@@ -57,8 +59,8 @@ public:
     template <typename... Ts, typename Fn>
     void each(Fn&& fn) {
         // Iterate over the smallest pool for efficiency.
-        auto& first = pool<first_t<Ts...>>();
-        for (auto& [e, _] : first) {
+        auto& first_pool = pool<first_t<Ts...>>();
+        for (auto& [e, _] : first_pool) {
             if (auto ptrs = try_get_all<Ts...>(e); ptrs) {
                 std::apply([&](auto*... ps) { fn(e, *ps...); }, *ptrs);
             }

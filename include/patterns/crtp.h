@@ -83,6 +83,10 @@ struct Sensor : Serializable<Sensor>,
     std::string name;  ///< Sensor identifier.
     double value{};    ///< Current reading.
 
+    /// @brief Construct a Sensor with a name and value.
+    Sensor(std::string n, double v) : name(std::move(n)), value(v) {}
+    Sensor() = default;
+
     /// @brief Serialize to "name:value" format.
     /// @return The serialized string.
     [[nodiscard]] std::string do_serialize() const {
