@@ -58,6 +58,9 @@ Desktop.ini
 coverage/
 coverage.info
 
+# ── Debug symbols ────────────────────────────────────────────────────
+*.dSYM/
+
 # ── Precompiled headers ──────────────────────────────────────────────
 *.gch
 *.pch
