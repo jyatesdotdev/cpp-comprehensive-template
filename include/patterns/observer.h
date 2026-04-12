@@ -24,7 +24,7 @@ public:
     /// @brief RAII handle — destructor auto-disconnects the slot.
     class Connection {
         friend class Signal;
-        std::weak_ptr<bool> alive_;
+        std::shared_ptr<bool> alive_;
     public:
         Connection() = default;
 
@@ -33,7 +33,7 @@ public:
 
         /// @brief Check whether the slot is still connected.
         /// @return true if the slot is live.
-        [[nodiscard]] bool connected() const { return !alive_.expired(); }
+        [[nodiscard]] bool connected() const { return alive_ != nullptr; }
     };
 
     /// @brief Subscribe a callable; returns a Connection whose destruction disconnects.

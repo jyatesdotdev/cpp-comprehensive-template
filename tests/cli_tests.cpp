@@ -99,7 +99,7 @@ TEST_CASE("apply_config_defaults: CLI value takes priority", "[cli]") {
     std::string host;
     app.add_option("--host", host);
 
-    app.parse(std::vector<std::string>{"--host", "from-cli"});
+    app.parse("--host from-cli");
 
     std::unordered_map<std::string, std::string> cfg{{"host", "from-config"}};
     cli::apply_config_defaults(app, cfg);
@@ -144,7 +144,7 @@ TEST_CASE("CLI11: option with validator rejects bad input", "[cli]") {
     app.add_option("--port", port)->check(cli::PortRange);
 
     CHECK_THROWS_AS(
-        app.parse(std::vector<std::string>{"--port", "99999"}),
+        app.parse("--port 99999"),
         CLI::ValidationError);
 }
 
