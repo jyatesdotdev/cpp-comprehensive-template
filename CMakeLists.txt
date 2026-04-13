@@ -22,6 +22,13 @@ option(ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" OFF)
 option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
 option(ENABLE_MSAN "Enable MemorySanitizer (Clang only)" OFF)
 option(ENABLE_RENDERING "Build rendering module (requires OpenGL)" OFF)
+option(ENABLE_COVERAGE "Enable coverage reporting" OFF)
+
+# ── Coverage ─────────────────────────────────────────────────────────
+if(ENABLE_COVERAGE)
+  add_compile_options(--coverage -fprofile-arcs -ftest-coverage)
+  add_link_options(--coverage)
+endif()
 
 # ── Security Tooling ────────────────────────────────────────────────
 include(cmake/Security.cmake)

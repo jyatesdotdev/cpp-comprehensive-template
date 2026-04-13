@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  VCPKG_ROOT: /usr/local/share/vcpkg
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup vcpkg
+        run: vcpkg install
+
+      - name: Configure
+        run: cmake --preset ci
+
+      - name: Build
+        run: cmake --build --preset ci
+
+      - name: Test
+        run: ctest --preset ci
+
+  coverage:
+    name: Coverage (≥80%)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install lcov
+        run: sudo apt-get update && sudo apt-get install -y lcov
+
+      - name: Setup vcpkg
+        run: vcpkg install
+
+      - name: Build with coverage
+        run: |
+          cmake --preset coverage
+          cmake --build --preset coverage
+
+      - name: Run tests with coverage
+        run: ctest --preset coverage
+
+      - name: Generate coverage report
+        run: |
+          lcov --capture --directory build/coverage --output-file coverage.info --ignore-errors mismatch
+          lcov --remove coverage.info '/usr/*' '*/tests/*' '*/third_party/*' '*/vcpkg_installed/*' '*/_deps/*' --output-file coverage.info
+          lcov --list coverage.info
+
+      - name: Check coverage threshold
+        run: |
+          COVERAGE=$(lcov --summary coverage.info 2>&1 | grep "lines" | grep -oP '[\d.]+%' | head -1 | tr -d '%')
+          echo "Line coverage: ${COVERAGE}%"
+          if (( $(echo "$COVERAGE < 80.0" | bc -l) )); then
+            echo "::error::Coverage ${COVERAGE}% is below 80% threshold"
+            exit 1
+          fi

@@ -91,6 +91,17 @@
         "ENABLE_CLANG_TIDY": "ON",
         "ENABLE_CPPCHECK": "ON"
       }
+    },
+    {
+      "name": "coverage",
+      "displayName": "Coverage",
+      "description": "Debug build with gcov coverage instrumentation",
+      "inherits": "debug",
+      "cacheVariables": {
+        "ENABLE_COVERAGE": "ON",
+        "BUILD_TESTS": "ON",
+        "BUILD_EXAMPLES": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -103,7 +114,8 @@
     { "name": "tsan", "configurePreset": "tsan" },
     { "name": "msan", "configurePreset": "msan" },
     { "name": "asan-ubsan", "configurePreset": "asan-ubsan" },
-    { "name": "security-scan", "configurePreset": "security-scan" }
+    { "name": "security-scan", "configurePreset": "security-scan" },
+    { "name": "coverage", "configurePreset": "coverage" }
   ],
   "testPresets": [
     {
@@ -156,6 +168,11 @@
         "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
         "UBSAN_OPTIONS": "print_stacktrace=1:halt_on_error=1"
       }
+    },
+    {
+      "name": "coverage",
+      "configurePreset": "coverage",
+      "output": { "outputOnFailure": true }
     }
   ]
 }
