@@ -51,8 +51,8 @@ jobs:
       - name: Generate coverage report
         run: |
           lcov --capture --directory build/coverage --output-file coverage.info --ignore-errors mismatch,empty
-          lcov --remove coverage.info '/usr/*' '*/tests/*' '*/third_party/*' '*/vcpkg_installed/*' '*/_deps/*' --output-file coverage.info --ignore-errors empty
-          lcov --list coverage.info --ignore-errors empty
+          lcov --remove coverage.info '/usr/*' '*/tests/*' '*/third_party/*' '*/vcpkg_installed/*' '*/_deps/*' --output-file coverage.info --ignore-errors empty,unused
+          lcov --list coverage.info --ignore-errors empty || true
 
       - name: Check coverage threshold
         run: |
