@@ -14,17 +14,17 @@ A modern C++ (C++20) project template covering systems programming, high-perform
 # Clone and configure
 git clone <repo-url> && cd cpp-comprehensive-template
 
-# Configure with vcpkg
+# Configure with vcpkg (writes to build/default — the preset's binaryDir)
 cmake --preset default
 
 # Build
-cmake --build build
+cmake --build --preset default
 
 # Run example
-./build/examples/hello_world
+./build/default/examples/hello_world
 
 # Run tests
-ctest --test-dir build --output-on-failure
+ctest --preset default
 ```
 
 ## Build Presets
@@ -32,9 +32,13 @@ ctest --test-dir build --output-on-failure
 | Preset    | Description                          |
 |-----------|--------------------------------------|
 | `default` | Standard build with vcpkg            |
-| `debug`   | Debug build with sanitizers enabled  |
+| `debug`   | Debug build (symbols, no sanitizers) |
 | `release` | Optimized release build              |
 | `ci`      | CI build: tests on, examples off     |
+
+> Also available: `asan`, `ubsan`, `tsan`, `msan`, `asan-ubsan` (sanitizers),
+> `security-scan` (clang-tidy + cppcheck), and `coverage`. Each configures into
+> `build/<preset>`. See [Architecture](docs/ARCHITECTURE.md).
 
 ## Project Structure
 
