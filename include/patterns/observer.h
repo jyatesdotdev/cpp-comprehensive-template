@@ -84,14 +84,21 @@ private:
 };
 
 /// @brief Convenience RAII wrapper that disconnects a Signal::Connection on destruction.
+///
+/// The constructor is templated on the connection type (deduced from the argument), because
+/// a signal's `Args...` cannot be deduced from a nested `Signal<Args...>::Connection` — that
+/// is a non-deduced context. The `requires` clause restricts it to connection-like types.
 class ScopedConnection {
-    Signal<>::Connection conn_;  // type-erased via disconnect()
     std::function<void()> disconnect_;
 public:
     ScopedConnection() = default;
 
-    template <typename... Args>
-    explicit ScopedConnection(typename Signal<Args...>::Connection c)
+    /// @brief Take ownership of a connection; its slot is disconnected when this object dies.
+    /// @tparam Conn A `Signal<...>::Connection` type (any signal signature).
+    /// @param c The connection to manage.
+    template <typename Conn>
+        requires requires(Conn c) { c.disconnect(); }
+    explicit ScopedConnection(Conn c)
         : disconnect_([c]() mutable { c.disconnect(); }) {}
 
     ~ScopedConnection() { if (disconnect_) disconnect_(); }
