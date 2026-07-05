@@ -10,9 +10,13 @@
 #include <thread>
 #include <vector>
 
-// C++17 parallel STL (available with TBB or MSVC runtime)
+// C++17 parallel STL (available with TBB or MSVC runtime). The <execution> header
+// may exist without usable policies (e.g. Apple libc++) — test the feature macros.
 #if __has_include(<execution>)
 #include <execution>
+#endif
+
+#if defined(__cpp_lib_execution) && defined(__cpp_lib_parallel_algorithm)
 #define HAS_PARALLEL_STL 1
 #else
 #define HAS_PARALLEL_STL 0

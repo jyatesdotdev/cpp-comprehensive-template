@@ -11,6 +11,12 @@
 
 #if __has_include(<execution>)
 #include <execution>
+#endif
+
+// The <execution> header may exist without usable parallel algorithms (e.g. Apple
+// libc++ ships the header but not the policies). Gate on the standard feature-test
+// macros rather than header presence alone.
+#if defined(__cpp_lib_execution) && defined(__cpp_lib_parallel_algorithm)
 #define HPC_HAS_PARALLEL_STL 1
 #else
 #define HPC_HAS_PARALLEL_STL 0
