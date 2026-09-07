@@ -2,16 +2,15 @@
 /// @brief Demonstrates RAII OpenGL wrappers, shader compilation, and render pass.
 /// Build with: cmake --preset default -DENABLE_RENDERING=ON
 
+#include <GLFW/glfw3.h>
+#include <cstdlib>
+#include <iostream>
 #include <rendering/gl_resource.h>
 #include <rendering/render_pipeline.h>
 #include <rendering/shader.h>
 
-#include <GLFW/glfw3.h>
-#include <cstdlib>
-#include <iostream>
-
 // ── Shaders ─────────────────────────────────────────────────────────
-static constexpr const char* kVertSrc = R"(
+static constexpr const char *kVertSrc = R"(
 #version 450 core
 layout(location = 0) in vec2 a_pos;
 layout(location = 1) in vec3 a_color;
@@ -22,7 +21,7 @@ void main() {
 }
 )";
 
-static constexpr const char* kFragSrc = R"(
+static constexpr const char *kFragSrc = R"(
 #version 450 core
 in vec3 v_color;
 out vec4 frag_color;
@@ -33,7 +32,10 @@ void main() {
 
 int main() {
     // ── GLFW init ───────────────────────────────────────────────────
-    if (!glfwInit()) { std::cerr << "GLFW init failed\n"; return 1; }
+    if (!glfwInit()) {
+        std::cerr << "GLFW init failed\n";
+        return 1;
+    }
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
@@ -42,19 +44,20 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-    GLFWwindow* window = glfwCreateWindow(800, 600, "Rendering Demo", nullptr, nullptr);
-    if (!window) { glfwTerminate(); return 1; }
+    GLFWwindow *window = glfwCreateWindow(800, 600, "Rendering Demo", nullptr, nullptr);
+    if (!window) {
+        glfwTerminate();
+        return 1;
+    }
     glfwMakeContextCurrent(window);
 
     // ── Build shader program ────────────────────────────────────────
-    GLuint prog = rendering::build_program(kVertSrc, kFragSrc);
+    rendering::gl::Program prog = rendering::build_program(kVertSrc, kFragSrc);
 
     // ── Triangle data ───────────────────────────────────────────────
     // interleaved: vec2 pos, vec3 color
     static constexpr float vertices[] = {
-         0.0f,  0.5f,   1.f, 0.f, 0.f,
-        -0.5f, -0.5f,   0.f, 1.f, 0.f,
-         0.5f, -0.5f,   0.f, 0.f, 1.f,
+        0.0f, 0.5f, 1.f, 0.f, 0.f, -0.5f, -0.5f, 0.f, 1.f, 0.f, 0.5f, -0.5f, 0.f, 0.f, 1.f,
     };
 
     // ── RAII GPU resources ──────────────────────────────────────────
@@ -74,7 +77,7 @@ int main() {
 
     // ── Pipeline state ──────────────────────────────────────────────
     rendering::PipelineState pipeline{
-        .program = prog,
+        .program = prog.id(),
         .depth = {.test_enabled = false},
         .blend = {},
         .cull_face = 0,
@@ -99,7 +102,6 @@ int main() {
             glfwSetWindowShouldClose(window, GLFW_TRUE);
     }
 
-    glDeleteProgram(prog);
     glfwDestroyWindow(window);
     glfwTerminate();
 }

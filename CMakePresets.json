@@ -7,6 +7,7 @@
       "displayName": "Default (vcpkg)",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_TOOLCHAIN_FILE": {
           "type": "FILEPATH",
           "value": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
@@ -33,7 +34,8 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BUILD_TESTS": "ON",
-        "BUILD_EXAMPLES": "OFF"
+        "BUILD_EXAMPLES": "OFF",
+        "ENABLE_WERROR": "ON"
       }
     },
     {
@@ -42,7 +44,8 @@
       "description": "Debug build with AddressSanitizer (detects out-of-bounds, use-after-free, double-free, leaks)",
       "inherits": "debug",
       "cacheVariables": {
-        "ENABLE_ASAN": "ON"
+        "ENABLE_ASAN": "ON",
+        "ENABLE_WERROR": "ON"
       }
     },
     {
@@ -51,7 +54,8 @@
       "description": "Debug build with UBSan (detects signed overflow, null deref, type violations)",
       "inherits": "debug",
       "cacheVariables": {
-        "ENABLE_UBSAN": "ON"
+        "ENABLE_UBSAN": "ON",
+        "ENABLE_WERROR": "ON"
       }
     },
     {
@@ -60,7 +64,8 @@
       "description": "Debug build with TSan (detects data races). Cannot combine with ASan or MSan.",
       "inherits": "debug",
       "cacheVariables": {
-        "ENABLE_TSAN": "ON"
+        "ENABLE_TSAN": "ON",
+        "ENABLE_WERROR": "ON"
       }
     },
     {
@@ -69,7 +74,8 @@
       "description": "Debug build with MSan (detects uninitialized reads). Clang only. Cannot combine with ASan or TSan.",
       "inherits": "debug",
       "cacheVariables": {
-        "ENABLE_MSAN": "ON"
+        "ENABLE_MSAN": "ON",
+        "ENABLE_WERROR": "ON"
       }
     },
     {
@@ -79,7 +85,8 @@
       "inherits": "debug",
       "cacheVariables": {
         "ENABLE_ASAN": "ON",
-        "ENABLE_UBSAN": "ON"
+        "ENABLE_UBSAN": "ON",
+        "ENABLE_WERROR": "ON"
       }
     },
     {
@@ -89,7 +96,8 @@
       "inherits": "debug",
       "cacheVariables": {
         "ENABLE_CLANG_TIDY": "ON",
-        "ENABLE_CPPCHECK": "ON"
+        "ENABLE_CPPCHECK": "ON",
+        "ENABLE_WERROR": "ON"
       }
     },
     {
@@ -100,22 +108,23 @@
       "cacheVariables": {
         "ENABLE_COVERAGE": "ON",
         "BUILD_TESTS": "ON",
-        "BUILD_EXAMPLES": "OFF"
+        "BUILD_EXAMPLES": "OFF",
+        "ENABLE_WERROR": "ON"
       }
     }
   ],
   "buildPresets": [
-    { "name": "default", "configurePreset": "default" },
-    { "name": "debug", "configurePreset": "debug" },
-    { "name": "release", "configurePreset": "release" },
-    { "name": "ci", "configurePreset": "ci" },
-    { "name": "asan", "configurePreset": "asan" },
-    { "name": "ubsan", "configurePreset": "ubsan" },
-    { "name": "tsan", "configurePreset": "tsan" },
-    { "name": "msan", "configurePreset": "msan" },
-    { "name": "asan-ubsan", "configurePreset": "asan-ubsan" },
-    { "name": "security-scan", "configurePreset": "security-scan" },
-    { "name": "coverage", "configurePreset": "coverage" }
+    { "name": "default", "configurePreset": "default", "configuration": "RelWithDebInfo" },
+    { "name": "debug", "configurePreset": "debug", "configuration": "Debug" },
+    { "name": "release", "configurePreset": "release", "configuration": "Release" },
+    { "name": "ci", "configurePreset": "ci", "configuration": "Release" },
+    { "name": "asan", "configurePreset": "asan", "configuration": "Debug" },
+    { "name": "ubsan", "configurePreset": "ubsan", "configuration": "Debug" },
+    { "name": "tsan", "configurePreset": "tsan", "configuration": "Debug" },
+    { "name": "msan", "configurePreset": "msan", "configuration": "Debug" },
+    { "name": "asan-ubsan", "configurePreset": "asan-ubsan", "configuration": "Debug" },
+    { "name": "security-scan", "configurePreset": "security-scan", "configuration": "Debug" },
+    { "name": "coverage", "configurePreset": "coverage", "configuration": "Debug" }
   ],
   "testPresets": [
     {
@@ -126,6 +135,7 @@
     {
       "name": "ci",
       "configurePreset": "ci",
+      "configuration": "Release",
       "output": { "outputOnFailure": true }
     },
     {

@@ -15,11 +15,11 @@ The root `README.md` and `docs/ARCHITECTURE.md` link out to everything here.
 | `TOOLCHAIN.md` | Required tools, compiler versions, IDE setup | `vcpkg.json`, `CMakePresets.json` |
 | `TUTORIAL.md` | New-developer walkthrough (clone → build → test → extend) | build presets, examples |
 | `EXTENDING.md` | Adding libraries, examples, tests, deps, presets | `CMakeLists.txt`, `vcpkg.json` |
-| `best_practices.md` | Modern C++17/20/23 coding guidelines | the whole codebase's idioms |
-| `api_design.md` | REST + C++ API design | [api](../include/api/AGENTS.md) |
+| `best_practices.md` | C++20 guidelines; C++23 marked future | the whole codebase's idioms |
+| `api_design.md` | C++ API design guidelines (not REST) | public headers / [api](../include/api/AGENTS.md) |
 | `cli.md` | CLI design with CLI11 | [cli](../include/cli/AGENTS.md) |
 | `hpc_optimization.md` | SIMD + parallel algorithms | [hpc](../include/hpc/AGENTS.md) |
-| `rendering_pipeline.md` | OpenGL/Vulkan graphics architecture | [rendering](../include/rendering/AGENTS.md) |
+| `rendering_pipeline.md` | OpenGL pipeline (Vulkan as background reading) | [rendering](../include/rendering/AGENTS.md) |
 | `cross_platform_build.md` | Per-platform build notes | `CMakePresets.json`, `Dockerfile` |
 | `SECURITY_SCANNING.md` | Static analysis, sanitizers, CI security | `cmake/Security.cmake`, `.clang-tidy`, CI |
 | `third_party_integration.md` | vcpkg / fmt / spdlog / JSON usage | `vcpkg.json`, `CMakeLists.txt` |

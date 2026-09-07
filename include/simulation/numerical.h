@@ -5,6 +5,8 @@
 #include <cmath>
 #include <cstddef>
 #include <functional>
+#include <stdexcept>
+#include <utility>
 #include <vector>
 
 namespace simulation {
@@ -18,8 +20,11 @@ namespace simulation {
 /// @param dt Time step size.
 /// @return Vector of (t, y) pairs from @p t0 to @p t_end.
 template <typename F>
-auto rk4(F&& f, double y0, double t0, double t_end, double dt)
+auto rk4(F &&f, double y0, double t0, double t_end, double dt)
     -> std::vector<std::pair<double, double>> {
+    if (dt <= 0.0) {
+        throw std::invalid_argument("rk4: dt must be positive");
+    }
     std::vector<std::pair<double, double>> result;
     double t = t0, y = y0;
     result.emplace_back(t, y);
@@ -43,9 +48,9 @@ auto rk4(F&& f, double y0, double t0, double t_end, double dt)
 /// @param n Number of subdivisions (rounded up to even if odd).
 /// @return Approximate value of the integral.
 /// @pre @p n should be even for correct results; if odd it is incremented.
-template <typename F>
-double simpson(F&& f, double a, double b, std::size_t n = 1000) {
-    if (n % 2 != 0) ++n;
+template <typename F> double simpson(F &&f, double a, double b, std::size_t n = 1000) {
+    if (n % 2 != 0)
+        ++n;
     double h = (b - a) / static_cast<double>(n);
     double sum = f(a) + f(b);
     for (std::size_t i = 1; i < n; ++i)
@@ -53,4 +58,4 @@ double simpson(F&& f, double a, double b, std::size_t n = 1000) {
     return sum * h / 3.0;
 }
 
-}  // namespace simulation
+} // namespace simulation

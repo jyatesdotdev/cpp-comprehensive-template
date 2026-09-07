@@ -3,15 +3,16 @@
 
 #include <api/rest_client.h>
 #include <api/rest_server.h>
-
 #include <cstdio>
+#include <string>
+#include <thread>
+#ifdef HAS_JSON
 #include <map>
 #include <mutex>
-#include <thread>
+#endif
 
 #ifdef HAS_JSON
 using json = nlohmann::json;
-#endif
 
 // ── In-memory store ─────────────────────────────────────────────────
 /// @brief In-memory item for the CRUD demo.
@@ -23,47 +24,46 @@ struct Item {
 static std::mutex g_mu;
 static std::map<int, Item> g_items;
 static int g_next_id = 1;
+#endif
 
 // ── Server setup ────────────────────────────────────────────────────
 /// @brief Register CRUD routes on the REST server.
-void setup_routes(api::RestServer& srv) {
+void setup_routes(api::RestServer &srv) {
 #ifdef HAS_JSON
     srv.use(api::cors());
     srv.use(api::logger());
 
     // List all items
-    srv.get("/items", [](const auto& /*req*/, auto& res) {
+    srv.get("/items", [](const auto & /*req*/, auto &res) {
         std::lock_guard lk(g_mu);
         auto arr = json::array();
-        for (auto& [id, item] : g_items)
+        for (auto &[id, item] : g_items)
             arr.push_back({{"id", id}, {"name", item.name}});
         res.set_json(api::Status::Ok, {{"items", arr}});
     });
 
     // Get one item
-    srv.get(R"(/items/(\d+))", [](const auto& req, auto& res) {
+    srv.get(R"(/items/(\d+))", [](const auto &req, auto &res) {
         int id = std::stoi(req.raw.matches[1]);
         std::lock_guard lk(g_mu);
         if (auto it = g_items.find(id); it != g_items.end()) {
-            res.set_json(api::Status::Ok,
-                         {{"id", it->second.id}, {"name", it->second.name}});
+            res.set_json(api::Status::Ok, {{"id", it->second.id}, {"name", it->second.name}});
         } else {
             res.set_json(api::Status::NotFound, {{"error", "not found"}});
         }
     });
 
     // Create item
-    srv.post("/items", [](const auto& req, auto& res) {
+    srv.post("/items", [](const auto &req, auto &res) {
         auto body = req.body_json();
         std::lock_guard lk(g_mu);
         int id = g_next_id++;
         g_items[id] = {id, body.value("name", "unnamed")};
-        res.set_json(api::Status::Created,
-                     {{"id", id}, {"name", g_items[id].name}});
+        res.set_json(api::Status::Created, {{"id", id}, {"name", g_items[id].name}});
     });
 
     // Delete item
-    srv.del(R"(/items/(\d+))", [](const auto& req, auto& res) {
+    srv.del(R"(/items/(\d+))", [](const auto &req, auto &res) {
         int id = std::stoi(req.raw.matches[1]);
         std::lock_guard lk(g_mu);
         if (g_items.erase(id))
@@ -72,7 +72,7 @@ void setup_routes(api::RestServer& srv) {
             res.set_json(api::Status::NotFound, {{"error", "not found"}});
     });
 #else
-    srv.get("/", [](const auto&, auto& res) {
+    srv.get("/", [](const auto &, auto &res) {
         res.set_text(api::Status::Ok, "Build with nlohmann-json for full demo");
     });
 #endif
@@ -85,11 +85,11 @@ int main() {
     api::RestServer server;
     setup_routes(server);
 
-    // Run server in background thread
-    std::thread srv_thread([&] { server.listen("127.0.0.1", port); });
-
-    // Give server time to start
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    if (!server.raw().bind_to_port("127.0.0.1", port)) {
+        std::fprintf(stderr, "Failed to bind 127.0.0.1:%d\n", port);
+        return 1;
+    }
+    std::thread srv_thread([&] { server.raw().listen_after_bind(); });
 
 #ifdef HAS_JSON
     // Exercise the API with the client

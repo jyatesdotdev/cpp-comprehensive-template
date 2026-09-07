@@ -1,8 +1,9 @@
 # Rendering Pipeline Guide
 
 Modern graphics programming in C++ revolves around GPU pipeline management, shader
-programs, and efficient resource handling. This guide covers OpenGL and Vulkan concepts
-with modern C++ patterns.
+programs, and efficient resource handling. **This template implements an OpenGL 4.5 DSA
+path** (`ENABLE_RENDERING`). Vulkan sections below are background reading, not code in
+this repository.
 
 ## Graphics API Overview
 

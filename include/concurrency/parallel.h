@@ -1,26 +1,14 @@
 #pragma once
 
 /// @file parallel.h
-/// @brief Parallel algorithm helpers: parallel_for, async map-reduce, and
-///        C++17 execution-policy wrappers.
+/// @brief Parallel algorithm helpers: parallel_for and async map-reduce.
+///        C++17 execution-policy wrappers live in hpc/parallel_stl.h.
 
 #include <algorithm>
 #include <future>
 #include <numeric>
 #include <thread>
 #include <vector>
-
-// C++17 parallel STL (available with TBB or MSVC runtime). The <execution> header
-// may exist without usable policies (e.g. Apple libc++) — test the feature macros.
-#if __has_include(<execution>)
-#include <execution>
-#endif
-
-#if defined(__cpp_lib_execution) && defined(__cpp_lib_parallel_algorithm)
-#define HAS_PARALLEL_STL 1
-#else
-#define HAS_PARALLEL_STL 0
-#endif
 
 namespace concurrency {
 
@@ -33,8 +21,12 @@ namespace concurrency {
 /// @param n_threads Number of threads to use (0 = hardware concurrency).
 template <typename It, typename Fn>
 void parallel_for(It begin, It end, Fn fn, unsigned n_threads = 0) {
-    if (begin == end) return;
-    if (!n_threads) n_threads = std::thread::hardware_concurrency();
+    if (begin == end)
+        return;
+    if (!n_threads)
+        n_threads = std::thread::hardware_concurrency();
+    if (!n_threads)
+        n_threads = 1; // hardware_concurrency() may report 0
     const auto total = static_cast<std::size_t>(std::distance(begin, end));
     const auto chunk = (total + n_threads - 1) / n_threads;
 
@@ -42,12 +34,13 @@ void parallel_for(It begin, It end, Fn fn, unsigned n_threads = 0) {
     for (unsigned t = 0; t < n_threads; ++t) {
         auto lo = begin + static_cast<std::ptrdiff_t>(std::min(t * chunk, total));
         auto hi = begin + static_cast<std::ptrdiff_t>(std::min((t + 1) * chunk, total));
-        if (lo == hi) break;
-        futs.push_back(std::async(std::launch::async, [lo, hi, &fn] {
-            std::for_each(lo, hi, fn);
-        }));
+        if (lo == hi)
+            break;
+        futs.push_back(
+            std::async(std::launch::async, [lo, hi, &fn] { std::for_each(lo, hi, fn); }));
     }
-    for (auto& f : futs) f.get(); // propagate exceptions
+    for (auto &f : futs)
+        f.get(); // propagate exceptions
 }
 
 /// @brief Parallel map-reduce: apply @p map to each element, then combine with @p reduce.
@@ -65,8 +58,12 @@ void parallel_for(It begin, It end, Fn fn, unsigned n_threads = 0) {
 template <typename It, typename T, typename MapFn, typename ReduceFn>
 T parallel_map_reduce(It begin, It end, T init, MapFn map, ReduceFn reduce,
                       unsigned n_threads = 0) {
-    if (begin == end) return init;
-    if (!n_threads) n_threads = std::thread::hardware_concurrency();
+    if (begin == end)
+        return init;
+    if (!n_threads)
+        n_threads = std::thread::hardware_concurrency();
+    if (!n_threads)
+        n_threads = 1; // hardware_concurrency() may report 0
     const auto total = static_cast<std::size_t>(std::distance(begin, end));
     const auto chunk = (total + n_threads - 1) / n_threads;
 
@@ -74,15 +71,18 @@ T parallel_map_reduce(It begin, It end, T init, MapFn map, ReduceFn reduce,
     for (unsigned t = 0; t < n_threads; ++t) {
         auto lo = begin + static_cast<std::ptrdiff_t>(std::min(t * chunk, total));
         auto hi = begin + static_cast<std::ptrdiff_t>(std::min((t + 1) * chunk, total));
-        if (lo == hi) break;
+        if (lo == hi)
+            break;
         futs.push_back(std::async(std::launch::async, [lo, hi, init, &map, &reduce] {
             T acc = init;
-            for (auto it = lo; it != hi; ++it) acc = reduce(acc, map(*it));
+            for (auto it = lo; it != hi; ++it)
+                acc = reduce(acc, map(*it));
             return acc;
         }));
     }
     T result = init;
-    for (auto& f : futs) result = reduce(result, f.get());
+    for (auto &f : futs)
+        result = reduce(result, f.get());
     return result;
 }
 

@@ -15,23 +15,26 @@ namespace rendering::gl {
 /// @brief Generic RAII handle for a single OpenGL object.
 /// @tparam CreateFn  GL creation function, e.g. `glCreateBuffers`.
 /// @tparam DeleteFn  GL deletion function, e.g. `glDeleteBuffers`.
-template <auto CreateFn, auto DeleteFn>
-class Resource {
-public:
+template <auto CreateFn, auto DeleteFn> class Resource {
+  public:
     /// @brief Create the GL object via CreateFn.
     Resource() { CreateFn(1, &id_); }
     /// @brief Destroy the GL object via DeleteFn.
-    ~Resource() { if (id_) DeleteFn(1, &id_); }
+    ~Resource() {
+        if (id_)
+            DeleteFn(1, &id_);
+    }
 
-    Resource(const Resource&) = delete;
-    Resource& operator=(const Resource&) = delete;
+    Resource(const Resource &) = delete;
+    Resource &operator=(const Resource &) = delete;
 
     /// @brief Move-construct, taking ownership from @p o.
-    Resource(Resource&& o) noexcept : id_(std::exchange(o.id_, 0)) {}
+    Resource(Resource &&o) noexcept : id_(std::exchange(o.id_, 0)) {}
     /// @brief Move-assign, taking ownership from @p o.
-    Resource& operator=(Resource&& o) noexcept {
+    Resource &operator=(Resource &&o) noexcept {
         if (this != &o) {
-            if (id_) DeleteFn(1, &id_);
+            if (id_)
+                DeleteFn(1, &id_);
             id_ = std::exchange(o.id_, 0);
         }
         return *this;
@@ -43,7 +46,7 @@ public:
     /// @brief Check whether this handle owns a valid GL object.
     explicit operator bool() const noexcept { return id_ != 0; }
 
-private:
+  private:
     GLuint id_ = 0;
 };
 
@@ -52,27 +55,73 @@ private:
 //        buf.id();        // get raw handle
 //        // automatically deleted when buf goes out of scope
 
-using Buffer       = Resource<glCreateBuffers,       glDeleteBuffers>;       ///< @brief RAII buffer object.
-using Texture      = Resource<glCreateTextures,       glDeleteTextures>;      ///< @brief RAII texture object.
-using VertexArray  = Resource<glCreateVertexArrays,   glDeleteVertexArrays>;  ///< @brief RAII vertex array object.
-using Framebuffer  = Resource<glCreateFramebuffers,   glDeleteFramebuffers>;  ///< @brief RAII framebuffer object.
-using Renderbuffer = Resource<glCreateRenderbuffers,   glDeleteRenderbuffers>; ///< @brief RAII renderbuffer object.
+using Buffer = Resource<glCreateBuffers, glDeleteBuffers>;    ///< @brief RAII buffer object.
+using Texture = Resource<glCreateTextures, glDeleteTextures>; ///< @brief RAII texture object.
+using VertexArray =
+    Resource<glCreateVertexArrays, glDeleteVertexArrays>; ///< @brief RAII vertex array object.
+using Framebuffer =
+    Resource<glCreateFramebuffers, glDeleteFramebuffers>; ///< @brief RAII framebuffer object.
+using Renderbuffer =
+    Resource<glCreateRenderbuffers, glDeleteRenderbuffers>; ///< @brief RAII renderbuffer object.
+
+/// @brief RAII wrapper for a single shader stage (different create/delete signature).
+class Shader {
+  public:
+    /// @brief Create a shader object of the given stage via `glCreateShader`.
+    /// @param type  GL shader type (e.g. `GL_VERTEX_SHADER`).
+    explicit Shader(GLenum type) : id_(glCreateShader(type)) {}
+    /// @brief Delete the shader via `glDeleteShader`.
+    ~Shader() {
+        if (id_)
+            glDeleteShader(id_);
+    }
+
+    Shader(const Shader &) = delete;
+    Shader &operator=(const Shader &) = delete;
+    /// @brief Move-construct, taking ownership from @p o.
+    Shader(Shader &&o) noexcept : id_(std::exchange(o.id_, 0)) {}
+    /// @brief Move-assign, taking ownership from @p o.
+    Shader &operator=(Shader &&o) noexcept {
+        if (this != &o) {
+            if (id_)
+                glDeleteShader(id_);
+            id_ = std::exchange(o.id_, 0);
+        }
+        return *this;
+    }
+
+    /// @brief Get the raw shader handle.
+    /// @return GL shader name (0 if moved-from).
+    [[nodiscard]] GLuint id() const noexcept { return id_; }
+    /// @brief Check whether this handle owns a valid shader.
+    explicit operator bool() const noexcept { return id_ != 0; }
+
+  private:
+    GLuint id_ = 0;
+};
 
 /// @brief RAII wrapper for an OpenGL shader program (different create/delete signature).
 class Program {
-public:
+  public:
     /// @brief Create a new shader program via `glCreateProgram`.
     Program() : id_(glCreateProgram()) {}
     /// @brief Delete the program via `glDeleteProgram`.
-    ~Program() { if (id_) glDeleteProgram(id_); }
+    ~Program() {
+        if (id_)
+            glDeleteProgram(id_);
+    }
 
-    Program(const Program&) = delete;
-    Program& operator=(const Program&) = delete;
+    Program(const Program &) = delete;
+    Program &operator=(const Program &) = delete;
     /// @brief Move-construct, taking ownership from @p o.
-    Program(Program&& o) noexcept : id_(std::exchange(o.id_, 0)) {}
+    Program(Program &&o) noexcept : id_(std::exchange(o.id_, 0)) {}
     /// @brief Move-assign, taking ownership from @p o.
-    Program& operator=(Program&& o) noexcept {
-        if (this != &o) { if (id_) glDeleteProgram(id_); id_ = std::exchange(o.id_, 0); }
+    Program &operator=(Program &&o) noexcept {
+        if (this != &o) {
+            if (id_)
+                glDeleteProgram(id_);
+            id_ = std::exchange(o.id_, 0);
+        }
         return *this;
     }
 
@@ -82,7 +131,7 @@ public:
     /// @brief Bind this program for use (`glUseProgram`).
     void use() const { glUseProgram(id_); }
 
-private:
+  private:
     GLuint id_ = 0;
 };
 

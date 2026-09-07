@@ -15,7 +15,8 @@ this repo — patterns the rest of the codebase is expected to follow.
 
 ## Key API & contracts
 - `AppConfig{ std::string name = "CppTemplate"; int log_level = 1; }` — `log_level`:
-  0=trace, 1=info, 2=warn, 3=error (maps to spdlog levels in the impl).
+  0=trace, 1=info, 2=warn, 3=error. The impl maps these **explicitly** onto spdlog
+  (`info` is spdlog 2, not 1). Do not `static_cast` the config value to `spdlog::level`.
 - `explicit App(AppConfig = {})`, `int run()` (returns exit code, 0 = success),
   `std::string_view name() const noexcept`.
 - **Move-only**: copy is `= delete`d; move ctor/assign are `noexcept`.

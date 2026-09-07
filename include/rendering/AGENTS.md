@@ -18,11 +18,13 @@ package fixed-function state into Vulkan-style pipeline objects. Demoed in
 
 ## Files
 - `gl_resource.h` — `gl::Resource<CreateFn, DeleteFn>` template + aliases `Buffer`, `Texture`,
-  `VertexArray`, `Framebuffer`, `Renderbuffer`, and `gl::Program`. Move-only RAII over one GL object.
-- `shader.h` — `compile_shader`, `link_program`, `build_program` (compile→link→cleanup);
-  overloaded `set_uniform` (int / float / mat4).
+  `VertexArray`, `Framebuffer`, `Renderbuffer`, plus bespoke `gl::Shader` and `gl::Program`.
+  Move-only RAII over one GL object.
+- `shader.h` — `compile_shader` → `gl::Shader`, `link_program` / `build_program` → `gl::Program`
+  (compile→link→cleanup via RAII; no raw `GLuint` ownership); overloaded `set_uniform`
+  (int / float / mat4).
 - `render_pipeline.h` — `DepthState`, `BlendState`, `PipelineState` (`.bind()`), and the RAII
-  `RenderPass` (binds FBO + viewport, clears, **restores the previous FBO on destruction**).
+  `RenderPass` (binds FBO + viewport, clears, **restores the previous FBO and viewport on destruction**).
 
 ## Invariants & business rules (MUST hold)
 1. **RAII owns exactly one GL object and is move-only.** `Resource`/`Program` delete copy,
@@ -32,13 +34,14 @@ package fixed-function state into Vulkan-style pipeline objects. Demoed in
 2. **GL calls need a current context.** Constructing a `Resource` calls `glCreate*`
    immediately — these objects must only be created/destroyed on a thread with a live GL
    context. Don't create them as globals or before context init.
-3. **Shader helpers must free on failure.** `compile_shader`/`link_program` delete the
-   shader/program and `throw std::runtime_error` (with the info log) on failure;
-   `build_program` deletes intermediate shaders on **every** path including exceptions. Keep
-   these leak-free error paths when editing.
-4. **`RenderPass` saves and restores framebuffer state.** It records `GL_FRAMEBUFFER_BINDING`
-   in the ctor and rebinds it in the dtor. It is non-copyable. Don't remove the save/restore —
-   callers rely on stack-scoped passes not corrupting global GL state.
+3. **Shader helpers must free on failure.** `compile_shader` returns `gl::Shader` and
+   `link_program`/`build_program` return `gl::Program`. Failed compile/link throws
+   `std::runtime_error` (with the info log); the RAII wrapper deletes the GL object. Do not
+   return a raw owning `GLuint` — intermediate shaders must not leak if a later step throws.
+4. **`RenderPass` saves and restores framebuffer and viewport state.** It records
+   `GL_FRAMEBUFFER_BINDING` and `GL_VIEWPORT` in the ctor and restores both in the dtor. It is
+   non-copyable. Don't remove the save/restore — callers rely on stack-scoped passes not
+   corrupting global GL state.
 5. `PipelineState::bind()` applies program + depth + blend + cull + polygon mode as a unit;
    `cull_face == 0` disables culling. Treat the `*State` structs as immutable descriptors.
 

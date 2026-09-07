@@ -17,7 +17,7 @@ namespace concurrency {
 /// Fixed-size thread pool. Enqueue callables and receive std::future results.
 /// Uses std::jthread for automatic join on destruction.
 class ThreadPool {
-public:
+  public:
     /// @brief Construct a thread pool with @p n worker threads.
     /// @param n Number of worker threads (defaults to hardware concurrency; minimum 1).
     explicit ThreadPool(unsigned n = std::thread::hardware_concurrency()) {
@@ -29,12 +29,15 @@ public:
     /// @brief Destroy the pool, requesting cooperative stop on all workers.
     ~ThreadPool() {
         // Request stop on all jthreads (auto-joined).
-        for (auto& w : workers_) w.request_stop();
+        for (auto &w : workers_)
+            w.request_stop();
         cv_.notify_all();
     }
 
-    ThreadPool(const ThreadPool&) = delete;
-    ThreadPool& operator=(const ThreadPool&) = delete;
+    ThreadPool(const ThreadPool &) = delete;
+    ThreadPool &operator=(const ThreadPool &) = delete;
+    ThreadPool(ThreadPool &&) = delete;
+    ThreadPool &operator=(ThreadPool &&) = delete;
 
     /// @brief Submit a callable for asynchronous execution.
     /// @tparam F    Callable type.
@@ -43,7 +46,7 @@ public:
     /// @param args Arguments forwarded to @p f.
     /// @return A `std::future` holding the eventual result of the callable.
     template <typename F, typename... Args>
-    auto submit(F&& f, Args&&... args) -> std::future<std::invoke_result_t<F, Args...>> {
+    auto submit(F &&f, Args &&...args) -> std::future<std::invoke_result_t<F, Args...>> {
         using R = std::invoke_result_t<F, Args...>;
         auto task = std::make_shared<std::packaged_task<R()>>(
             std::bind(std::forward<F>(f), std::forward<Args>(args)...));
@@ -60,14 +63,15 @@ public:
     /// @return Worker thread count.
     [[nodiscard]] std::size_t size() const noexcept { return workers_.size(); }
 
-private:
+  private:
     void run(std::stop_token st) {
-        while (!st.stop_requested()) {
+        for (;;) {
             std::function<void()> task;
             {
                 std::unique_lock lk{mu_};
                 cv_.wait(lk, [&] { return st.stop_requested() || !tasks_.empty(); });
-                if (st.stop_requested() && tasks_.empty()) return;
+                if (tasks_.empty())
+                    return; // stop requested; queue drained
                 task = std::move(tasks_.front());
                 tasks_.pop();
             }
@@ -75,10 +79,12 @@ private:
         }
     }
 
-    std::vector<std::jthread> workers_;
+    // workers_ must be declared last so jthreads join before mu_/cv_/tasks_
+    // are destroyed (members are destroyed in reverse declaration order).
     std::queue<std::function<void()>> tasks_;
     std::mutex mu_;
     std::condition_variable cv_;
+    std::vector<std::jthread> workers_;
 };
 
 } // namespace concurrency

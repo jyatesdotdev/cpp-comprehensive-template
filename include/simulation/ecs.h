@@ -21,7 +21,7 @@ using Entity = std::uint32_t;
 
 /// @brief Lightweight ECS world — owns entities and their components.
 class World {
-public:
+  public:
     /// @brief Create a new entity with a unique ID.
     /// @return The newly created entity identifier.
     [[nodiscard]] Entity create() { return next_id_++; }
@@ -30,18 +30,14 @@ public:
     /// @tparam T Component type.
     /// @param e Target entity.
     /// @param component Component value to attach.
-    template <typename T>
-    void add(Entity e, T component) {
-        pool<T>()[e] = std::move(component);
-    }
+    template <typename T> void add(Entity e, T component) { pool<T>()[e] = std::move(component); }
 
     /// @brief Retrieve a pointer to an entity's component of type @p T.
     /// @tparam T Component type to look up.
     /// @param e Target entity.
     /// @return Pointer to the component, or `nullptr` if the entity lacks it.
-    template <typename T>
-    [[nodiscard]] T* get(Entity e) {
-        auto& p = pool<T>();
+    template <typename T> [[nodiscard]] T *get(Entity e) {
+        auto &p = pool<T>();
         auto it = p.find(e);
         return it != p.end() ? &it->second : nullptr;
     }
@@ -49,52 +45,65 @@ public:
     /// @brief Remove a component of type @p T from an entity.
     /// @tparam T Component type to remove.
     /// @param e Target entity.
-    template <typename T>
-    void remove(Entity e) { pool<T>().erase(e); }
+    template <typename T> void remove(Entity e) { pool<T>().erase(e); }
+
+    /// @brief Remove every component attached to @p e.
+    ///
+    /// The entity id is not recycled (`create()` still returns the next id).
+    /// @param e Target entity.
+    void destroy(Entity e) {
+        for (auto &[_, erase] : erasers_)
+            erase(e);
+    }
 
     /// @brief Invoke @p fn for every entity that has all of @p Ts... components.
     /// @tparam Ts Component types required on each entity.
     /// @tparam Fn Callable with signature `void(Entity, Ts&...)`.
     /// @param fn Callback invoked for each matching entity.
-    template <typename... Ts, typename Fn>
-    void each(Fn&& fn) {
-        // Iterate over the smallest pool for efficiency.
-        auto& first_pool = pool<first_t<Ts...>>();
-        for (auto& [e, _] : first_pool) {
+    template <typename... Ts, typename Fn> void each(Fn &&fn) {
+        // Snapshot IDs so callbacks may add/remove components without
+        // invalidating the driving pool's iterators.
+        auto &first_pool = pool<first_t<Ts...>>();
+        std::vector<Entity> ids;
+        ids.reserve(first_pool.size());
+        for (auto &[e, _] : first_pool)
+            ids.push_back(e);
+        for (Entity e : ids) {
             if (auto ptrs = try_get_all<Ts...>(e); ptrs) {
-                std::apply([&](auto*... ps) { fn(e, *ps...); }, *ptrs);
+                std::apply([&](auto *...ps) { fn(e, *ps...); }, *ptrs);
             }
         }
     }
 
-private:
-    template <typename T, typename...>
-    struct first { using type = T; };
-    template <typename... Ts>
-    using first_t = typename first<Ts...>::type;
+  private:
+    template <typename T, typename...> struct first {
+        using type = T;
+    };
+    template <typename... Ts> using first_t = typename first<Ts...>::type;
 
-    template <typename T>
-    using Pool = std::unordered_map<Entity, T>;
+    template <typename T> using Pool = std::unordered_map<Entity, T>;
 
-    template <typename T>
-    Pool<T>& pool() {
+    template <typename T> Pool<T> &pool() {
         auto idx = std::type_index(typeid(T));
         auto it = pools_.find(idx);
-        if (it == pools_.end())
+        if (it == pools_.end()) {
             it = pools_.emplace(idx, Pool<T>{}).first;
-        return std::any_cast<Pool<T>&>(it->second);
+            erasers_[idx] = [this](Entity e) { pool<T>().erase(e); };
+        }
+        return std::any_cast<Pool<T> &>(it->second);
     }
 
-    template <typename... Ts>
-    auto try_get_all(Entity e) -> std::optional<std::tuple<Ts*...>> {
-        std::tuple<Ts*...> ptrs{get<Ts>(e)...};
-        bool all = ((std::get<Ts*>(ptrs) != nullptr) && ...);
-        if (!all) return std::nullopt;
+    template <typename... Ts> auto try_get_all(Entity e) -> std::optional<std::tuple<Ts *...>> {
+        std::tuple<Ts *...> ptrs{get<Ts>(e)...};
+        bool all = ((std::get<Ts *>(ptrs) != nullptr) && ...);
+        if (!all)
+            return std::nullopt;
         return ptrs;
     }
 
     Entity next_id_{0};
     std::unordered_map<std::type_index, std::any> pools_;
+    std::unordered_map<std::type_index, std::function<void(Entity)>> erasers_;
 };
 
-}  // namespace simulation
+} // namespace simulation

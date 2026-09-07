@@ -5,9 +5,10 @@
 /// Replaces the classic double-dispatch visitor with a type-safe, closed set of
 /// alternatives and overloaded lambdas.
 
+#include <memory>
+#include <stdexcept>
 #include <string>
 #include <variant>
-#include <vector>
 
 namespace patterns {
 
@@ -15,12 +16,12 @@ namespace patterns {
 
 /// @brief Aggregate that inherits from all supplied callables, exposing each `operator()`.
 /// @tparam Ts Callable types to combine.
-template <typename... Ts>
-struct Overload : Ts... { using Ts::operator()...; };
+template <typename... Ts> struct Overload : Ts... {
+    using Ts::operator()...;
+};
 
 /// @brief Deduction guide for Overload.
-template <typename... Ts>
-Overload(Ts...) -> Overload<Ts...>;
+template <typename... Ts> Overload(Ts...) -> Overload<Ts...>;
 
 // ── AST node types (example domain) ────────────────────────────────
 
@@ -35,17 +36,13 @@ struct BinaryExpr;
 /// @brief Forward declaration of a unary operator expression node.
 struct UnaryExpr;
 
-using Expr = std::variant<
-    LiteralExpr,
-    std::unique_ptr<BinaryExpr>,
-    std::unique_ptr<UnaryExpr>
->;
+using Expr = std::variant<LiteralExpr, std::unique_ptr<BinaryExpr>, std::unique_ptr<UnaryExpr>>;
 
 /// @brief A binary operator expression (e.g. `a + b`).
 struct BinaryExpr {
-    char op;   ///< The operator character (+, -, *, /).
-    Expr lhs;  ///< Left-hand side expression.
-    Expr rhs;  ///< Right-hand side expression.
+    char op;  ///< The operator character (+, -, *, /).
+    Expr lhs; ///< Left-hand side expression.
+    Expr rhs; ///< Right-hand side expression.
 };
 
 /// @brief A unary operator expression (e.g. `-x`).
@@ -59,25 +56,34 @@ struct UnaryExpr {
 /// @brief Recursively evaluate an expression tree to a numeric result.
 /// @param expr The expression variant to evaluate.
 /// @return The computed double value.
-inline double evaluate(const Expr& expr) {
+/// @throws std::invalid_argument If a division by zero is attempted.
+inline double evaluate(const Expr &expr) {
     return std::visit(Overload{
-        [](const LiteralExpr& e) { return e.value; },
-        [](const std::unique_ptr<BinaryExpr>& e) -> double {
-            double l = evaluate(e->lhs);
-            double r = evaluate(e->rhs);
-            switch (e->op) {
-                case '+': return l + r;
-                case '-': return l - r;
-                case '*': return l * r;
-                case '/': return r != 0.0 ? l / r : 0.0;
-                default:  return 0.0;
-            }
-        },
-        [](const std::unique_ptr<UnaryExpr>& e) -> double {
-            double v = evaluate(e->operand);
-            return e->op == '-' ? -v : v;
-        },
-    }, expr);
+                          [](const LiteralExpr &e) { return e.value; },
+                          [](const std::unique_ptr<BinaryExpr> &e) -> double {
+                              double l = evaluate(e->lhs);
+                              double r = evaluate(e->rhs);
+                              switch (e->op) {
+                              case '+':
+                                  return l + r;
+                              case '-':
+                                  return l - r;
+                              case '*':
+                                  return l * r;
+                              case '/':
+                                  if (r == 0.0)
+                                      throw std::invalid_argument("division by zero");
+                                  return l / r;
+                              default:
+                                  return 0.0;
+                              }
+                          },
+                          [](const std::unique_ptr<UnaryExpr> &e) -> double {
+                              double v = evaluate(e->operand);
+                              return e->op == '-' ? -v : v;
+                          },
+                      },
+                      expr);
 }
 
 // ── Visitor: pretty-print an expression tree ────────────────────────
@@ -85,16 +91,18 @@ inline double evaluate(const Expr& expr) {
 /// @brief Recursively convert an expression tree to a parenthesized string.
 /// @param expr The expression variant to stringify.
 /// @return A human-readable string representation.
-inline std::string to_string(const Expr& expr) {
+inline std::string to_string(const Expr &expr) {
     return std::visit(Overload{
-        [](const LiteralExpr& e) { return std::to_string(e.value); },
-        [](const std::unique_ptr<BinaryExpr>& e) -> std::string {
-            return "(" + to_string(e->lhs) + " " + e->op + " " + to_string(e->rhs) + ")";
-        },
-        [](const std::unique_ptr<UnaryExpr>& e) -> std::string {
-            return std::string(1, e->op) + to_string(e->operand);
-        },
-    }, expr);
+                          [](const LiteralExpr &e) { return std::to_string(e.value); },
+                          [](const std::unique_ptr<BinaryExpr> &e) -> std::string {
+                              return "(" + to_string(e->lhs) + " " + e->op + " " +
+                                     to_string(e->rhs) + ")";
+                          },
+                          [](const std::unique_ptr<UnaryExpr> &e) -> std::string {
+                              return std::string(1, e->op) + to_string(e->operand);
+                          },
+                      },
+                      expr);
 }
 
 // ── Helper factories ────────────────────────────────────────────────
@@ -102,7 +110,9 @@ inline std::string to_string(const Expr& expr) {
 /// @brief Create a literal expression.
 /// @param v The numeric value.
 /// @return An Expr containing a LiteralExpr.
-inline Expr lit(double v) { return LiteralExpr{v}; }
+inline Expr lit(double v) {
+    return LiteralExpr{v};
+}
 
 /// @brief Create a binary expression.
 /// @param op The operator character (+, -, *, /).
@@ -120,4 +130,4 @@ inline Expr neg(Expr e) {
     return std::make_unique<UnaryExpr>(UnaryExpr{'-', std::move(e)});
 }
 
-}  // namespace patterns
+} // namespace patterns

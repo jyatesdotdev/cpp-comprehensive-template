@@ -4,10 +4,10 @@
 ///
 /// Eliminates virtual dispatch overhead while enforcing interfaces at compile time.
 
-#include <concepts>
-#include <cstddef>
 #include <iostream>
+#include <stdexcept>
 #include <string>
+#include <string_view>
 
 namespace patterns {
 
@@ -15,17 +15,14 @@ namespace patterns {
 
 /// @brief Base CRTP helper providing a `self()` accessor that casts to the Derived type.
 /// @tparam Derived The concrete class inheriting from this base.
-template <typename Derived>
-struct Crtp {
+template <typename Derived> struct Crtp {
     /// @brief Access the derived object (mutable).
     /// @return Reference to the derived instance.
-    [[nodiscard]] constexpr auto& self() noexcept {
-        return static_cast<Derived&>(*this);
-    }
+    [[nodiscard]] constexpr auto &self() noexcept { return static_cast<Derived &>(*this); }
     /// @brief Access the derived object (const).
     /// @return Const reference to the derived instance.
-    [[nodiscard]] constexpr const auto& self() const noexcept {
-        return static_cast<const Derived&>(*this);
+    [[nodiscard]] constexpr const auto &self() const noexcept {
+        return static_cast<const Derived &>(*this);
     }
 };
 
@@ -33,30 +30,26 @@ struct Crtp {
 
 /// @brief CRTP mixin that adds `serialize()` / `deserialize()` by delegating to Derived.
 /// @tparam Derived Must implement `do_serialize()` and `do_deserialize(std::string_view)`.
-template <typename Derived>
-struct Serializable {
+template <typename Derived> struct Serializable {
     /// @brief Serialize the object to a string.
     /// @return The serialized representation.
     [[nodiscard]] std::string serialize() const {
-        return static_cast<const Derived&>(*this).do_serialize();
+        return static_cast<const Derived &>(*this).do_serialize();
     }
     /// @brief Deserialize from a string, populating the object's state.
     /// @param data The serialized data.
-    void deserialize(std::string_view data) {
-        static_cast<Derived&>(*this).do_deserialize(data);
-    }
+    void deserialize(std::string_view data) { static_cast<Derived &>(*this).do_deserialize(data); }
 };
 
 // ── Mixin: Printable (chainable CRTP layer) ─────────────────────────
 
 /// @brief CRTP mixin that adds a `print()` method by delegating to `Derived::to_string()`.
 /// @tparam Derived Must implement `std::string to_string() const`.
-template <typename Derived>
-struct Printable {
+template <typename Derived> struct Printable {
     /// @brief Print the object's string representation to an output stream.
     /// @param os The output stream (defaults to std::cout).
-    void print(std::ostream& os = std::cout) const {
-        os << static_cast<const Derived&>(*this).to_string() << '\n';
+    void print(std::ostream &os = std::cout) const {
+        os << static_cast<const Derived &>(*this).to_string() << '\n';
     }
 };
 
@@ -64,12 +57,11 @@ struct Printable {
 
 /// @brief CRTP mixin that provides `==` and `<=>` operators via `Derived::compare_key()`.
 /// @tparam Derived Must implement a `compare_key() const` returning a three-way-comparable value.
-template <typename Derived>
-struct Comparable {
-    [[nodiscard]] friend bool operator==(const Derived& a, const Derived& b) {
+template <typename Derived> struct Comparable {
+    [[nodiscard]] friend bool operator==(const Derived &a, const Derived &b) {
         return a.compare_key() == b.compare_key();
     }
-    [[nodiscard]] friend auto operator<=>(const Derived& a, const Derived& b) {
+    [[nodiscard]] friend auto operator<=>(const Derived &a, const Derived &b) {
         return a.compare_key() <=> b.compare_key();
     }
 };
@@ -77,11 +69,9 @@ struct Comparable {
 // ── Example concrete type using multiple CRTP mixins ────────────────
 
 /// @brief Example sensor type demonstrating Serializable, Printable, and Comparable mixins.
-struct Sensor : Serializable<Sensor>,
-                Printable<Sensor>,
-                Comparable<Sensor> {
-    std::string name;  ///< Sensor identifier.
-    double value{};    ///< Current reading.
+struct Sensor : Serializable<Sensor>, Printable<Sensor>, Comparable<Sensor> {
+    std::string name; ///< Sensor identifier.
+    double value{};   ///< Current reading.
 
     /// @brief Construct a Sensor with a name and value.
     Sensor(std::string n, double v) : name(std::move(n)), value(v) {}
@@ -89,13 +79,14 @@ struct Sensor : Serializable<Sensor>,
 
     /// @brief Serialize to "name:value" format.
     /// @return The serialized string.
-    [[nodiscard]] std::string do_serialize() const {
-        return name + ":" + std::to_string(value);
-    }
+    [[nodiscard]] std::string do_serialize() const { return name + ":" + std::to_string(value); }
     /// @brief Deserialize from "name:value" format.
     /// @param data The serialized string.
     void do_deserialize(std::string_view data) {
         auto sep = data.find(':');
+        if (sep == std::string_view::npos) {
+            throw std::invalid_argument("Sensor: expected name:value");
+        }
         name = std::string(data.substr(0, sep));
         value = std::stod(std::string(data.substr(sep + 1)));
     }
@@ -109,4 +100,4 @@ struct Sensor : Serializable<Sensor>,
     [[nodiscard]] double compare_key() const { return value; }
 };
 
-}  // namespace patterns
+} // namespace patterns

@@ -44,8 +44,9 @@ Add CLI11 via FetchContent in your root `CMakeLists.txt`:
 ```cmake
 include(FetchContent)
 FetchContent_Declare(cli11
-    GIT_REPOSITORY https://github.com/CLIUtils/CLI11
-    GIT_TAG        v2.4.2)
+    URL https://github.com/CLIUtils/CLI11/archive/refs/tags/v2.4.2.tar.gz
+    URL_HASH SHA256=f2d893a65c3b1324c50d4e682c0cdc021dd0477ae2c048544f39eed6654b699a
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
 FetchContent_MakeAvailable(cli11)
 
 # Create an interface library for CLI helpers

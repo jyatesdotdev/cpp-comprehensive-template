@@ -29,6 +29,8 @@ alternative under `HAS_BOOST`.
 4. **`cli::fmt` table/width math is ANSI-aware.** Column widths use `visible_length`, which
    **skips ANSI escape sequences** so colored cells still align. If you add styling, route it
    through `colorize`/`visible_length` — never count raw `.size()` for layout.
+   `colorize` is a no-op when `NO_COLOR` is set (non-empty); `Table`/`ProgressBar` honor it by
+   not emitting ANSI of their own.
 5. **Stream discipline:** `ProgressBar` draws to **stderr** (so piped stdout stays clean);
    `Table` prints to a caller-supplied `std::ostream` (default `std::cout`). Keep progress/UI
    chrome off stdout so machine-readable output isn't corrupted.

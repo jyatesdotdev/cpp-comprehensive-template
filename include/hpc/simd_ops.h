@@ -42,8 +42,7 @@ inline constexpr std::size_t kSimdWidth = 1; // scalar fallback
 /// @param[in]  a    First source array.
 /// @param[in]  b    Second source array.
 /// @param[in]  n    Number of elements.
-inline void simd_add(float* __restrict dst, const float* __restrict a,
-                     const float* __restrict b, std::size_t n) {
+inline void simd_add(float *dst, const float *a, const float *b, std::size_t n) {
     std::size_t i = 0;
 #if defined(HPC_SIMD_AVX2)
     for (; i + 8 <= n; i += 8) {
@@ -64,7 +63,8 @@ inline void simd_add(float* __restrict dst, const float* __restrict a,
         vst1q_f32(dst + i, vaddq_f32(va, vb));
     }
 #endif
-    for (; i < n; ++i) dst[i] = a[i] + b[i]; // scalar tail
+    for (; i < n; ++i)
+        dst[i] = a[i] + b[i]; // scalar tail
 }
 
 /// @brief Element-wise multiplication of two float arrays using SIMD intrinsics.
@@ -75,8 +75,7 @@ inline void simd_add(float* __restrict dst, const float* __restrict a,
 /// @param[in]  a    First source array.
 /// @param[in]  b    Second source array.
 /// @param[in]  n    Number of elements.
-inline void simd_mul(float* __restrict dst, const float* __restrict a,
-                     const float* __restrict b, std::size_t n) {
+inline void simd_mul(float *dst, const float *a, const float *b, std::size_t n) {
     std::size_t i = 0;
 #if defined(HPC_SIMD_AVX2)
     for (; i + 8 <= n; i += 8) {
@@ -97,7 +96,8 @@ inline void simd_mul(float* __restrict dst, const float* __restrict a,
         vst1q_f32(dst + i, vmulq_f32(va, vb));
     }
 #endif
-    for (; i < n; ++i) dst[i] = a[i] * b[i];
+    for (; i < n; ++i)
+        dst[i] = a[i] * b[i];
 }
 
 /// @brief SIMD-accelerated dot product of two float arrays.
@@ -108,7 +108,7 @@ inline void simd_mul(float* __restrict dst, const float* __restrict a,
 /// @param[in] b  Second source array.
 /// @param[in] n  Number of elements.
 /// @return The dot product as a single float.
-inline float simd_dot(const float* a, const float* b, std::size_t n) {
+inline float simd_dot(const float *a, const float *b, std::size_t n) {
     float sum = 0.0f;
     std::size_t i = 0;
 #if defined(HPC_SIMD_AVX2)
@@ -116,12 +116,16 @@ inline float simd_dot(const float* a, const float* b, std::size_t n) {
     for (; i + 8 <= n; i += 8) {
         __m256 va = _mm256_loadu_ps(a + i);
         __m256 vb = _mm256_loadu_ps(b + i);
-        acc = _mm256_fmadd_ps(va, vb, acc); // requires FMA (implied by AVX2 in practice)
+#if defined(__FMA__)
+        acc = _mm256_fmadd_ps(va, vb, acc);
+#else
+        acc = _mm256_add_ps(acc, _mm256_mul_ps(va, vb));
+#endif
     }
     // horizontal sum of 8 floats
     __m128 lo = _mm256_castps256_ps128(acc);
     __m128 hi = _mm256_extractf128_ps(acc, 1);
-    __m128 s  = _mm_add_ps(lo, hi);
+    __m128 s = _mm_add_ps(lo, hi);
     s = _mm_hadd_ps(s, s);
     s = _mm_hadd_ps(s, s);
     sum = _mm_cvtss_f32(s);
@@ -145,7 +149,8 @@ inline float simd_dot(const float* a, const float* b, std::size_t n) {
     }
     sum = vaddvq_f32(acc);
 #endif
-    for (; i < n; ++i) sum += a[i] * b[i]; // scalar tail
+    for (; i < n; ++i)
+        sum += a[i] * b[i]; // scalar tail
     return sum;
 }
 
@@ -155,9 +160,10 @@ inline float simd_dot(const float* a, const float* b, std::size_t n) {
 /// @param[in] b  Second source array.
 /// @param[in] n  Number of elements.
 /// @return The dot product as a single float.
-inline float scalar_dot(const float* a, const float* b, std::size_t n) {
+inline float scalar_dot(const float *a, const float *b, std::size_t n) {
     float sum = 0.0f;
-    for (std::size_t i = 0; i < n; ++i) sum += a[i] * b[i];
+    for (std::size_t i = 0; i < n; ++i)
+        sum += a[i] * b[i];
     return sum;
 }
 

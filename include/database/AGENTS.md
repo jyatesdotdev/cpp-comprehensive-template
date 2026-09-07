@@ -21,19 +21,20 @@ includes `<sqlite3.h>` directly.
    `Statement::bind(idx, value)` — **never concatenate untrusted values into SQL.** Text binds
    use `SQLITE_TRANSIENT` (SQLite copies the buffer), so binding a `string_view` is safe even
    if the source is temporary.
-   - Note: `Repository::find_by_id/remove` concatenate `T::table_name()` into the SQL — that
-     is acceptable **only because table names are compile-time-trusted**, and the *id* is still
-     bound. Keep any interpolated identifier trusted/whitelisted; bind every value.
+   - Note: `Repository::find_by_id/remove` concatenate `T::table_name()` into the SQL. The *id*
+     is bound, and `table_name()` is rejected unless it matches `[A-Za-z_][A-Za-z0-9_]*`
+     (`SqliteError` otherwise). Keep any interpolated identifier whitelisted; bind every value.
 2. **Index bases differ and are a classic bug source:** `bind(...)` is **1-based**;
    `col_*(...)` reads are **0-based**. Preserve this and document it at call sites.
 3. **RAII ownership is exclusive.** `Database` and `Statement` are move-only (copy deleted);
-   moves null out the source handle; destructors call `sqlite3_close` / `sqlite3_finalize`.
+   moves null out the source handle; destructors call `sqlite3_close_v2` / `sqlite3_finalize`.
    Never copy them, never double-close, never store a raw `sqlite3*`/`sqlite3_stmt*` that
    outlives its wrapper.
 4. **Errors are exceptions.** Non-`OK`/unexpected result codes throw `SqliteError`. `step()`
    returns `true` on `SQLITE_ROW`, `false` on `SQLITE_DONE`, and throws otherwise. Don't
    swallow return codes silently.
 5. **`transaction(fn)` is BEGIN → fn → COMMIT, with ROLLBACK on any exception**, then rethrow.
+   ROLLBACK uses `sqlite3_exec` directly so a failed rollback cannot hide the original error.
    Use it for multi-statement atomicity; don't hand-roll BEGIN/COMMIT.
 6. On open, the connection sets `PRAGMA journal_mode=WAL` and `PRAGMA foreign_keys=ON`. Keep
    these (WAL concurrency + enforced FKs are intended defaults).
@@ -51,8 +52,8 @@ includes `<sqlite3.h>` directly.
   thread unless you know the threading mode.
 
 ## When editing
-- There is **no `database_tests.cpp`** target; behavior is shown in `examples/database_demo.cpp`.
-  Add tests guarded on `SQLite3_FOUND` if you extend the API.
+- Tests live in `tests/database_tests.cpp` (wired only when `SQLite3_FOUND`). Prefer
+  `:memory:` databases so tests stay offline and isolated.
 
 ## Neighbors
 Frequently paired with [api](../api/AGENTS.md) (validate HTTP input → bind into SQL).

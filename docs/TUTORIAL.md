@@ -145,7 +145,7 @@ Each module has a demo program in `examples/`:
 # Simulation — physics, ECS, numerical integration
 ./build/default/examples/simulation_demo
 
-# API — REST client/server (requires cpp-httplib)
+# API — REST client/server (cpp-httplib via vcpkg or FetchContent)
 ./build/default/examples/api_demo
 
 # Database — SQLite wrapper (requires sqlite3)
@@ -158,7 +158,8 @@ Each module has a demo program in `examples/`:
 ./build/default/examples/third_party_demo
 ```
 
-> **Note:** `api_demo`, `database_demo`, and `rendering_demo` are only built when their dependencies are found. The rendering demo also requires `-DENABLE_RENDERING=ON`.
+> **Note:** `database_demo` needs SQLite3. `api_demo` needs cpp-httplib (vcpkg **or** the
+> FetchContent fallback). `rendering_demo` needs `-DENABLE_RENDERING=ON` and OpenGL/GLFW.
 
 ## 6. Add a Feature
 

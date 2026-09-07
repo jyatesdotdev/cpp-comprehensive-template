@@ -371,8 +371,8 @@ endif()
 |------|---------|------------|-------------|
 | Formatting | fmt | `fmt` | Optional |
 | Logging | spdlog | `spdlog` | Optional |
-| JSON | nlohmann/json | `nlohmann-json` | Yes |
-| HTTP Client/Server | cpp-httplib | `cpp-httplib` | Yes |
+| JSON | nlohmann/json | `nlohmann-json` (FetchContent v3.11.3 if missing) | Yes |
+| HTTP Client/Server | cpp-httplib | `cpp-httplib` (FetchContent v0.18.3 if missing) | Yes |
 | Async I/O | Boost.Asio | `boost-asio` | Yes |
 | CLI Args | Boost.ProgramOptions | `boost-program-options` | No |
 | HTTP/WebSocket | Boost.Beast | `boost-beast` | Yes |

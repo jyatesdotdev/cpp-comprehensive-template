@@ -20,17 +20,20 @@ Reusable threading primitives. This is one of the most **safety-critical** modul
 1. **`SpscQueue` is SPSC, period.** *Exactly one* thread may ever call `push()` and *exactly
    one* (possibly different) thread may call `pop()`. It is **not** MPMC/MPSC-safe. If you
    need multiple producers/consumers, build a different type — do not weaken this one.
-2. `SpscQueue` capacity **must be a power of two** (`static_assert` enforces it) — the fast
-   path masks with `Cap - 1` instead of `%`. `push` returns `false` when full; `pop` returns
-   `std::nullopt` when empty. `head_`/`tail_` are `alignas(64)` to avoid false sharing —
-   keep that.
+2. `SpscQueue` ring size **must be a power of two** (`static_assert` enforces it) — the fast
+   path masks with `Cap - 1` instead of `%`. Usable capacity is `Cap - 1` (one slot reserved).
+   `push` returns `false` when full; `pop` returns `std::nullopt` when empty.
+   `head_`/`tail_` are `alignas(64)` to avoid false sharing — keep that.
 3. **Memory ordering is load-bearing.** The producer publishes with `release`, the consumer
    observes with `acquire`. Do not relax these to `relaxed` or "simplify" them; TSan/readers
    rely on the happens-before edge. Element type must be default-constructible (the buffer is
    value-initialized) and cheaply movable.
-4. `ThreadPool` uses `std::jthread` (auto-joins) + `request_stop()` in the destructor. Do not
-   detach workers or add a raw `std::thread`. `submit` wraps the call in a
+4. `ThreadPool` uses `std::jthread` (auto-joins) + `request_stop()` in the destructor.
+   Workers **drain remaining tasks** after stop so waiters do not see a broken promise.
+   `workers_` is declared **last** so joins happen before `mu_`/`cv_`/`tasks_` are destroyed.
+   Do not detach workers or add a raw `std::thread`. `submit` wraps the call in a
    `std::packaged_task` and returns its `future` — exceptions propagate through `future.get()`.
+   Copy and move are deleted.
 5. Guard shared state (`tasks_`, the queue) with the existing `mutex`/`condition_variable`;
    `notify_one` on submit, `notify_all` on shutdown.
 6. `parallel_for`/`parallel_map_reduce` **capture the user function by reference** and

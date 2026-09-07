@@ -1,0 +1,37 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+find_dependency(Threads)
+
+set(CppComprehensiveTemplate_HAS_FMT @CPP_EXPORT_FMT@)
+set(CppComprehensiveTemplate_HAS_SPDLOG @CPP_EXPORT_SPDLOG@)
+set(CppComprehensiveTemplate_HAS_JSON @CPP_EXPORT_JSON@)
+set(CppComprehensiveTemplate_HAS_API @CPP_EXPORT_HTTPLIB@)
+set(CppComprehensiveTemplate_HAS_DATABASE @CPP_EXPORT_SQLITE@)
+set(CppComprehensiveTemplate_HAS_RENDERING @CPP_EXPORT_RENDERING@)
+
+# Only IMPORTED packages are linked from the exported targets. FetchContent
+# dependencies (CLI11, and httplib/json when not found via find_package) stay
+# BUILD_INTERFACE-only and are not in the export set.
+if(CppComprehensiveTemplate_HAS_FMT)
+    find_dependency(fmt CONFIG)
+endif()
+if(CppComprehensiveTemplate_HAS_SPDLOG)
+    find_dependency(spdlog CONFIG)
+endif()
+if(CppComprehensiveTemplate_HAS_JSON)
+    find_dependency(nlohmann_json CONFIG)
+endif()
+if(CppComprehensiveTemplate_HAS_API)
+    find_dependency(httplib CONFIG)
+endif()
+if(CppComprehensiveTemplate_HAS_DATABASE)
+    find_dependency(SQLite3)
+endif()
+if(CppComprehensiveTemplate_HAS_RENDERING)
+    find_dependency(OpenGL)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/CppComprehensiveTemplateTargets.cmake")
+check_required_components(CppComprehensiveTemplate)

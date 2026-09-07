@@ -5,7 +5,7 @@
 ///        handles, GPU resources, etc.).
 ///
 /// Usage:
-///   auto fd = memory::UniqueHandle<int, CloseFile, -1>(::open(path, O_RDONLY));
+///   auto fd = memory::UniqueFd(::open(path, O_RDONLY));
 
 #include <utility>
 
@@ -15,9 +15,8 @@ namespace memory {
 /// @tparam Handle   The handle type (int, HANDLE, GLuint, …).
 /// @tparam Deleter  Callable that releases the handle.
 /// @tparam Invalid  Sentinel value representing "no resource".
-template <typename Handle, typename Deleter, Handle Invalid = Handle{}>
-class UniqueHandle {
-public:
+template <typename Handle, typename Deleter, Handle Invalid = Handle{}> class UniqueHandle {
+  public:
     /// @brief Construct a handle wrapper with no resource.
     UniqueHandle() noexcept = default;
     /// @brief Construct a handle wrapper taking ownership of @p h.
@@ -25,12 +24,13 @@ public:
     explicit UniqueHandle(Handle h) noexcept : handle_{h} {}
     ~UniqueHandle() { reset(); }
 
-    UniqueHandle(const UniqueHandle&) = delete;
-    UniqueHandle& operator=(const UniqueHandle&) = delete;
+    UniqueHandle(const UniqueHandle &) = delete;
+    UniqueHandle &operator=(const UniqueHandle &) = delete;
 
-    UniqueHandle(UniqueHandle&& o) noexcept : handle_{o.release()} {}
-    UniqueHandle& operator=(UniqueHandle&& o) noexcept {
-        if (this != &o) reset(o.release());
+    UniqueHandle(UniqueHandle &&o) noexcept : handle_{o.release()} {}
+    UniqueHandle &operator=(UniqueHandle &&o) noexcept {
+        if (this != &o)
+            reset(o.release());
         return *this;
     }
 
@@ -47,11 +47,12 @@ public:
     /// @brief Replace the managed handle, releasing the old one if valid.
     /// @param h New handle to manage (defaults to Invalid).
     void reset(Handle h = Invalid) noexcept {
-        if (handle_ != Invalid) Deleter{}(handle_);
+        if (handle_ != Invalid)
+            Deleter{}(handle_);
         handle_ = h;
     }
 
-private:
+  private:
     Handle handle_{Invalid};
 };
 

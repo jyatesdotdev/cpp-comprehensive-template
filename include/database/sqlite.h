@@ -3,33 +3,32 @@
 /// @file sqlite.h
 /// @brief Modern C++ RAII wrapper for SQLite3 with prepared statements and ORM patterns.
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <optional>
+#include <sqlite3.h>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <vector>
 
-#include <sqlite3.h>
-
 namespace database {
 
 /// @brief Exception type for SQLite errors.
 class SqliteError : public std::runtime_error {
-public:
+  public:
     /// @brief Construct an error with an SQLite result code and message.
     /// @param code SQLite error code (e.g. SQLITE_ERROR).
     /// @param msg Human-readable error description.
-    SqliteError(int code, const std::string& msg)
-        : std::runtime_error(msg + " (code " + std::to_string(code) + ")"),
-          code_(code) {}
+    SqliteError(int code, const std::string &msg)
+        : std::runtime_error(msg + " (code " + std::to_string(code) + ")"), code_(code) {}
     /// @brief Get the SQLite error code.
     /// @return The SQLite result code that triggered this error.
     [[nodiscard]] int code() const noexcept { return code_; }
 
-private:
+  private:
     int code_;
 };
 
@@ -37,12 +36,16 @@ class Database; // forward
 
 /// @brief RAII prepared statement with typed bind/column accessors.
 class Statement {
-public:
-    Statement(const Statement&) = delete;
-    Statement& operator=(const Statement&) = delete;
-    Statement(Statement&& o) noexcept : stmt_(o.stmt_) { o.stmt_ = nullptr; }
-    Statement& operator=(Statement&& o) noexcept {
-        if (this != &o) { finalize(); stmt_ = o.stmt_; o.stmt_ = nullptr; }
+  public:
+    Statement(const Statement &) = delete;
+    Statement &operator=(const Statement &) = delete;
+    Statement(Statement &&o) noexcept : stmt_(o.stmt_) { o.stmt_ = nullptr; }
+    Statement &operator=(Statement &&o) noexcept {
+        if (this != &o) {
+            finalize();
+            stmt_ = o.stmt_;
+            o.stmt_ = nullptr;
+        }
         return *this;
     }
     ~Statement() { finalize(); }
@@ -53,7 +56,7 @@ public:
     /// @param value Integer value to bind.
     /// @return Reference to this statement for chaining.
     /// @throws SqliteError on bind failure.
-    Statement& bind(int idx, int value) {
+    Statement &bind(int idx, int value) {
         check(sqlite3_bind_int(stmt_, idx, value));
         return *this;
     }
@@ -62,7 +65,7 @@ public:
     /// @param value 64-bit integer value to bind.
     /// @return Reference to this statement for chaining.
     /// @throws SqliteError on bind failure.
-    Statement& bind(int idx, int64_t value) {
+    Statement &bind(int idx, int64_t value) {
         check(sqlite3_bind_int64(stmt_, idx, value));
         return *this;
     }
@@ -71,7 +74,7 @@ public:
     /// @param value Double value to bind.
     /// @return Reference to this statement for chaining.
     /// @throws SqliteError on bind failure.
-    Statement& bind(int idx, double value) {
+    Statement &bind(int idx, double value) {
         check(sqlite3_bind_double(stmt_, idx, value));
         return *this;
     }
@@ -80,16 +83,16 @@ public:
     /// @param value String view to bind (copied via SQLITE_TRANSIENT).
     /// @return Reference to this statement for chaining.
     /// @throws SqliteError on bind failure.
-    Statement& bind(int idx, std::string_view value) {
-        check(sqlite3_bind_text(stmt_, idx, value.data(),
-                                static_cast<int>(value.size()), SQLITE_TRANSIENT));
+    Statement &bind(int idx, std::string_view value) {
+        check(sqlite3_bind_text(stmt_, idx, value.data(), static_cast<int>(value.size()),
+                                SQLITE_TRANSIENT));
         return *this;
     }
     /// @brief Bind NULL to a parameter.
     /// @param idx 1-based parameter index.
     /// @return Reference to this statement for chaining.
     /// @throws SqliteError on bind failure.
-    Statement& bind_null(int idx) {
+    Statement &bind_null(int idx) {
         check(sqlite3_bind_null(stmt_, idx));
         return *this;
     }
@@ -100,15 +103,17 @@ public:
     /// @throws SqliteError on any other result code.
     bool step() {
         int rc = sqlite3_step(stmt_);
-        if (rc == SQLITE_ROW) return true;
-        if (rc == SQLITE_DONE) return false;
+        if (rc == SQLITE_ROW)
+            return true;
+        if (rc == SQLITE_DONE)
+            return false;
         throw SqliteError(rc, sqlite3_errmsg(sqlite3_db_handle(stmt_)));
     }
 
     /// @brief Reset the statement for re-execution and clear bindings.
     /// @return Reference to this statement for chaining.
     /// @throws SqliteError on reset failure.
-    Statement& reset() {
+    Statement &reset() {
         check(sqlite3_reset(stmt_));
         sqlite3_clear_bindings(stmt_);
         return *this;
@@ -131,7 +136,7 @@ public:
     /// @param idx 0-based column index.
     /// @return The column value as std::string (empty if NULL).
     [[nodiscard]] std::string col_text(int idx) const {
-        auto* p = reinterpret_cast<const char*>(sqlite3_column_text(stmt_, idx));
+        auto *p = reinterpret_cast<const char *>(sqlite3_column_text(stmt_, idx));
         return p ? std::string(p) : std::string{};
     }
     /// @brief Check whether a column value is NULL.
@@ -144,26 +149,30 @@ public:
     /// @return Column count.
     [[nodiscard]] int column_count() const { return sqlite3_column_count(stmt_); }
 
-private:
+  private:
     friend class Database;
-    explicit Statement(sqlite3_stmt* s) : stmt_(s) {}
+    explicit Statement(sqlite3_stmt *s) : stmt_(s) {}
 
     void check(int rc) {
         if (rc != SQLITE_OK)
             throw SqliteError(rc, sqlite3_errmsg(sqlite3_db_handle(stmt_)));
     }
-    void finalize() { if (stmt_) sqlite3_finalize(stmt_); stmt_ = nullptr; }
+    void finalize() {
+        if (stmt_)
+            sqlite3_finalize(stmt_);
+        stmt_ = nullptr;
+    }
 
-    sqlite3_stmt* stmt_ = nullptr;
+    sqlite3_stmt *stmt_ = nullptr;
 };
 
 /// @brief RAII SQLite database connection.
 class Database {
-public:
+  public:
     /// @brief Open a database connection at the given path.
     /// @param path Filesystem path to the SQLite database file.
     /// @throws SqliteError if the database cannot be opened.
-    explicit Database(const std::string& path) {
+    explicit Database(const std::string &path) {
         int rc = sqlite3_open(path.c_str(), &db_);
         if (rc != SQLITE_OK) {
             std::string msg = db_ ? sqlite3_errmsg(db_) : "cannot open database";
@@ -174,11 +183,15 @@ public:
         exec("PRAGMA foreign_keys=ON");
     }
 
-    Database(const Database&) = delete;
-    Database& operator=(const Database&) = delete;
-    Database(Database&& o) noexcept : db_(o.db_) { o.db_ = nullptr; }
-    Database& operator=(Database&& o) noexcept {
-        if (this != &o) { close(); db_ = o.db_; o.db_ = nullptr; }
+    Database(const Database &) = delete;
+    Database &operator=(const Database &) = delete;
+    Database(Database &&o) noexcept : db_(o.db_) { o.db_ = nullptr; }
+    Database &operator=(Database &&o) noexcept {
+        if (this != &o) {
+            close();
+            db_ = o.db_;
+            o.db_ = nullptr;
+        }
         return *this;
     }
     ~Database() { close(); }
@@ -188,9 +201,8 @@ public:
     /// @return A prepared Statement ready for binding and execution.
     /// @throws SqliteError if preparation fails.
     [[nodiscard]] Statement prepare(std::string_view sql) {
-        sqlite3_stmt* stmt = nullptr;
-        int rc = sqlite3_prepare_v2(db_, sql.data(),
-                                    static_cast<int>(sql.size()), &stmt, nullptr);
+        sqlite3_stmt *stmt = nullptr;
+        int rc = sqlite3_prepare_v2(db_, sql.data(), static_cast<int>(sql.size()), &stmt, nullptr);
         if (rc != SQLITE_OK)
             throw SqliteError(rc, sqlite3_errmsg(db_));
         return Statement(stmt);
@@ -200,7 +212,7 @@ public:
     /// @param sql SQL statement to execute.
     /// @throws SqliteError on execution failure.
     void exec(std::string_view sql) {
-        char* err = nullptr;
+        char *err = nullptr;
         int rc = sqlite3_exec(db_, std::string(sql).c_str(), nullptr, nullptr, &err);
         if (rc != SQLITE_OK) {
             std::string msg = err ? err : "exec error";
@@ -211,17 +223,14 @@ public:
 
     /// @brief Get the rowid of the last successful INSERT.
     /// @return The rowid as int64_t.
-    [[nodiscard]] int64_t last_insert_rowid() const {
-        return sqlite3_last_insert_rowid(db_);
-    }
+    [[nodiscard]] int64_t last_insert_rowid() const { return sqlite3_last_insert_rowid(db_); }
 
     /// @brief Run a callable inside a BEGIN/COMMIT transaction; rolls back on exception.
     /// @tparam F Callable type (invoked with no arguments).
     /// @param fn The function to execute within the transaction.
     /// @return The return value of @p fn (if non-void).
     /// @throws Rethrows any exception from @p fn after issuing ROLLBACK.
-    template <typename F>
-    auto transaction(F&& fn) -> decltype(fn()) {
+    template <typename F> auto transaction(F &&fn) -> decltype(fn()) {
         exec("BEGIN");
         try {
             if constexpr (std::is_void_v<decltype(fn())>) {
@@ -233,14 +242,22 @@ public:
                 return result;
             }
         } catch (...) {
-            exec("ROLLBACK");
+            // ROLLBACK must not hide the original exception.
+            char *err = nullptr;
+            sqlite3_exec(db_, "ROLLBACK", nullptr, nullptr, &err);
+            sqlite3_free(err);
             throw;
         }
     }
 
-private:
-    void close() { if (db_) sqlite3_close(db_); db_ = nullptr; }
-    sqlite3* db_ = nullptr;
+  private:
+    void close() {
+        if (db_) {
+            sqlite3_close_v2(db_);
+            db_ = nullptr;
+        }
+    }
+    sqlite3 *db_ = nullptr;
 };
 
 // ── Simple ORM Pattern ──────────────────────────────────────────────
@@ -255,18 +272,15 @@ private:
 ///   - `void bind_to(Statement& stmt) const;`   — bind fields to insert stmt
 ///   - `static T from_row(Statement& stmt);`    — construct from SELECT row
 /// @tparam T Model type satisfying the above interface.
-template <typename T>
-class Repository {
-public:
+template <typename T> class Repository {
+  public:
     /// @brief Construct a repository and ensure the table exists.
     /// @param db Database connection to use.
-    explicit Repository(Database& db) : db_(db) {
-        db_.exec(T::create_sql());
-    }
+    explicit Repository(Database &db) : db_(db) { db_.exec(T::create_sql()); }
 
     /// @brief Insert an entity into the table.
     /// @param entity The model instance to insert.
-    void insert(const T& entity) {
+    void insert(const T &entity) {
         auto stmt = db_.prepare(T::insert_sql());
         entity.bind_to(stmt);
         stmt.step();
@@ -277,32 +291,52 @@ public:
     [[nodiscard]] std::vector<T> find_all() {
         auto stmt = db_.prepare(T::select_all_sql());
         std::vector<T> results;
-        while (stmt.step()) results.push_back(T::from_row(stmt));
+        while (stmt.step())
+            results.push_back(T::from_row(stmt));
         return results;
     }
 
     /// @brief Find an entity by its primary key.
     /// @param id The rowid to look up.
     /// @return The entity if found, or std::nullopt.
+    /// @throws SqliteError If `T::table_name()` is not a safe SQL identifier.
     [[nodiscard]] std::optional<T> find_by_id(int64_t id) {
-        auto stmt = db_.prepare(
-            std::string("SELECT * FROM ") + T::table_name() + " WHERE id = ?");
+        require_table_name(T::table_name());
+        auto stmt = db_.prepare(std::string("SELECT * FROM ") + T::table_name() + " WHERE id = ?");
         stmt.bind(1, id);
-        if (stmt.step()) return T::from_row(stmt);
+        if (stmt.step())
+            return T::from_row(stmt);
         return std::nullopt;
     }
 
     /// @brief Delete an entity by its primary key.
     /// @param id The rowid to delete.
+    /// @throws SqliteError If `T::table_name()` is not a safe SQL identifier.
     void remove(int64_t id) {
-        auto stmt = db_.prepare(
-            std::string("DELETE FROM ") + T::table_name() + " WHERE id = ?");
+        require_table_name(T::table_name());
+        auto stmt = db_.prepare(std::string("DELETE FROM ") + T::table_name() + " WHERE id = ?");
         stmt.bind(1, id);
         stmt.step();
     }
 
-private:
-    Database& db_;
+  private:
+    /// @brief Reject identifiers that are not `[A-Za-z_][A-Za-z0-9_]*` before SQL concat.
+    static void require_table_name(std::string_view name) {
+        auto is_start = [](char c) {
+            return c == '_' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+        };
+        auto is_cont = [&](char c) { return is_start(c) || (c >= '0' && c <= '9'); };
+        if (name.empty() || !is_start(name.front())) {
+            throw SqliteError(SQLITE_ERROR, "invalid table name");
+        }
+        for (std::size_t i = 1; i < name.size(); ++i) {
+            if (!is_cont(name[i])) {
+                throw SqliteError(SQLITE_ERROR, "invalid table name");
+            }
+        }
+    }
+
+    Database &db_;
 };
 
 } // namespace database

@@ -2,6 +2,8 @@
 
 A practical reference for writing idiomatic, safe, and performant C++ using C++17/20/23 features.
 
+**This repository is C++20.** Material marked *future (C++23)* is orientation only — it is **not required** by this tree and is not available under the project's `-std=c++20` build.
+
 ---
 
 ## Table of Contents
@@ -12,7 +14,7 @@ A practical reference for writing idiomatic, safe, and performant C++ using C++1
 4. [Modern Type System](#modern-type-system)
 5. [C++17 Features](#c17-features)
 6. [C++20 Features](#c20-features)
-7. [C++23 Features](#c23-features)
+7. [C++23 Features](#c23-features) — future / not required
 8. [Error Handling](#error-handling)
 9. [API Design Guidelines](#api-design-guidelines)
 10. [Performance Guidelines](#performance-guidelines)
@@ -215,7 +217,7 @@ auto to_string(const Value& v) -> std::string {
 }
 ```
 
-### `std::expected` — Error-or-Value (C++23)
+### `std::expected` — Error-or-Value (C++23, future — not required by this C++20 tree)
 
 ```cpp
 enum class ParseError { empty, overflow };
@@ -377,6 +379,8 @@ int main() { return add(1, 2); }
 
 ## C++23 Features
 
+> **Future / not required.** This template compiles as **C++20**. The APIs below are shown for orientation only; they are not used by this tree and must not be treated as a project requirement.
+
 ### `std::print` — Type-Safe I/O
 
 ```cpp
@@ -422,7 +426,7 @@ std::generator<int> range(int start, int end) {
 | Situation | Mechanism |
 |---|---|
 | Programming errors (bugs) | `assert`, contracts (C++26), `[[assume]]` |
-| Recoverable runtime errors | `std::expected<T,E>` (C++23) or exceptions |
+| Recoverable runtime errors | `std::expected<T,E>` (C++23, future) or exceptions |
 | Truly exceptional conditions | Exceptions |
 | Performance-critical hot paths | Error codes or `std::expected` |
 
@@ -473,7 +477,7 @@ public:
 
 - Return by value (NRVO/move makes this efficient).
 - Use `std::optional<T>` for "might not have a result."
-- Use `std::expected<T, E>` for operations that can fail with error info.
+- Use `std::expected<T, E>` (C++23, future) for operations that can fail with error info.
 - Return `std::unique_ptr<T>` for factory functions.
 
 ### Const Correctness
@@ -562,7 +566,7 @@ if (cache.contains(key)) [[likely]] {
 | Generic lambdas, `make_unique`, variable templates | C++14 |
 | `optional`, `variant`, `string_view`, structured bindings, `if constexpr`, `filesystem`, fold expressions | C++17 |
 | Concepts, ranges, coroutines, `<=>`, `std::format`, modules, `consteval`, `constinit` | C++20 |
-| `expected`, `print`, deducing `this`, `mdspan`, `generator`, `std::flat_map` | C++23 |
+| `expected`, `print`, deducing `this`, `mdspan`, `generator`, `std::flat_map` | C++23 (future — not required by this tree) |
 
 ---
 

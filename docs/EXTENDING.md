@@ -72,7 +72,7 @@ if(MyDep_FOUND)
 endif()
 ```
 
-See `api` (requires `httplib`) and `database` (requires `SQLite3`) for real examples.
+See `api` (cpp-httplib via vcpkg or FetchContent fallback) and `database` (requires `SQLite3`) for real examples.
 
 ---
 
@@ -226,22 +226,24 @@ The `QUIET` + conditional pattern keeps the build working when the dependency is
 
 ## Adding a FetchContent Dependency
 
-For header-only or small libraries not in vcpkg:
+For header-only or small libraries, prefer a **URL + SHA256** so the fetch is pinned
+(even when the same library is also listed in `vcpkg.json` as the primary path):
 
 ```cmake
 include(FetchContent)
 FetchContent_Declare(
     MyLib
-    GIT_REPOSITORY https://github.com/org/mylib.git
-    GIT_TAG        v1.0.0
-    GIT_SHALLOW    TRUE
+    URL https://github.com/org/mylib/archive/refs/tags/v1.0.0.tar.gz
+    URL_HASH SHA256=<hex>
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 FetchContent_MakeAvailable(MyLib)
 ```
 
 Then link: `target_link_libraries(mymodule INTERFACE MyLib::MyLib)`.
 
-See the existing `CLI11` fetch for a working example.
+Working examples in the root `CMakeLists.txt`: `CLI11` (always fetched) and
+`cpp-httplib` / `nlohmann/json` (fetched only when the matching `find_package` fails).
 
 ---
 
@@ -301,6 +303,24 @@ Add to the `"configurePresets"` array. Use `"inherits"` to extend an existing pr
 | `msan` | `debug` | MemorySanitizer (Clang only) |
 | `asan-ubsan` | `debug` | ASan + UBSan combined |
 | `security-scan` | `debug` | clang-tidy + cppcheck |
+
+---
+
+## Installing the package
+
+`cmake --install` exports `CppComprehensiveTemplate::` targets (not `cli`, which is
+FetchContent CLI11) plus `CppComprehensiveTemplateConfig.cmake`:
+
+```bash
+cmake --install build/local --prefix /tmp/cppct
+# consumer:
+find_package(CppComprehensiveTemplate CONFIG REQUIRED)
+target_link_libraries(app PRIVATE CppComprehensiveTemplate::core)
+```
+
+Warnings/sanitizer INTERFACE libs and FetchContent deps are `$<BUILD_INTERFACE:...>` so they
+are **not** in the export set. Optional vcpkg packages (fmt, spdlog, httplib, …) are
+`find_dependency`'d from the config file only when they were IMPORTED at build time.
 
 ---
 

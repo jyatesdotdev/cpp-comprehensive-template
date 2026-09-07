@@ -172,10 +172,18 @@ race:ThirdPartyLib::sharedState
 
 ## CI Integration
 
-See `.github/workflows/security.yml` for a complete GitHub Actions example that:
-- Runs clang-tidy + cppcheck on every push/PR
-- Runs ASan + UBSan tests
-- Fails the pipeline on high-severity findings
+`.github/workflows/ci.yml` builds and tests on **ubuntu-24.04, macos-14, and windows-2022**
+with the `ci` preset (`ENABLE_WERROR=ON`) and enforces **≥80% line coverage** on Ubuntu.
+
+`.github/workflows/security.yml` on every push/PR:
+- clang-tidy + cppcheck (`security-scan`, `-Werror`); fails on `cert-*` / `clang-analyzer-security`
+- ASan + UBSan
+- ThreadSanitizer
+- MemorySanitizer (Clang). vcpkg libraries are **not** MSan-instrumented, so third-party
+  frames can false-positive — the job still gates *our* objects
+- Trivy filesystem scan (SARIF)
+
+Sanitizer, coverage, and `security-scan` presets all set `ENABLE_WERROR=ON`.
 
 ## Architecture
 

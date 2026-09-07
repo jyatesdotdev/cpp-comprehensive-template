@@ -6,18 +6,40 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 env:
-  VCPKG_ROOT: /usr/local/share/vcpkg
+  VCPKG_ROOT: ${{ github.workspace }}/.vcpkg
 
 jobs:
   build-and-test:
-    name: Build & Test
-    runs-on: ubuntu-24.04
+    name: Build & Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-14, windows-2022]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup vcpkg
-        run: vcpkg install
+      - name: Install build tools (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y curl zip unzip tar pkg-config ninja-build
+
+      - name: Install build tools (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja pkg-config
+
+      - name: Bootstrap vcpkg
+        shell: bash
+        run: |
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
+          if [ -x "$VCPKG_ROOT/bootstrap-vcpkg.sh" ]; then
+            "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+          else
+            "$VCPKG_ROOT/bootstrap-vcpkg.bat" -disableMetrics
+          fi
 
       - name: Configure
         run: cmake --preset ci
@@ -34,11 +56,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install lcov
-        run: sudo apt-get update && sudo apt-get install -y lcov
+      - name: Install lcov and bc
+        run: sudo apt-get update && sudo apt-get install -y lcov bc curl zip unzip tar pkg-config ninja-build
 
-      - name: Setup vcpkg
-        run: vcpkg install
+      - name: Bootstrap vcpkg
+        run: |
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
 
       - name: Build with coverage
         run: |

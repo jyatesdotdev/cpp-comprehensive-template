@@ -6,6 +6,9 @@ Scope: `cmake/`. Parent: [root AGENTS.md](../AGENTS.md).
 - `Security.cmake` — centralizes the static-analysis / dynamic-analysis tooling toggles.
   `include(cmake/Security.cmake)` runs near the top of the root `CMakeLists.txt` (after
   `project()`).
+- `CppComprehensiveTemplateConfig.cmake.in` — `configure_package_config_file` input for
+  `find_package(CppComprehensiveTemplate)`. FetchContent/`project_warnings` stay out of the
+  export set (`BUILD_INTERFACE`).
 
 ## What `Security.cmake` provides (business role)
 Opt-in options, each wired to a tool that is *found at configure time* (a warning, not an error,

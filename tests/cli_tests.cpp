@@ -1,12 +1,11 @@
 /// @file cli_tests.cpp
 /// @brief Tests for CLI parsing helpers, validators, and output formatting.
 
-#include <catch2/catch_test_macros.hpp>
-
 #include "cli/cli_helpers.h"
 #include "cli/output_format.h"
 
 #include <CLI/CLI.hpp>
+#include <catch2/catch_test_macros.hpp>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -15,7 +14,7 @@
 // ── Helper: write a temp config file ────────────────────────────────
 
 /// @brief Write a temporary config file and return its path.
-static std::filesystem::path write_temp_config(const std::string& content) {
+static std::filesystem::path write_temp_config(const std::string &content) {
     auto path = std::filesystem::temp_directory_path() / "cli_test_config.txt";
     std::ofstream(path) << content;
     return path;
@@ -125,10 +124,10 @@ TEST_CASE("CLI11: subcommand selection", "[cli]") {
     CLI::App app{"test"};
     bool serve_ran = false, info_ran = false;
 
-    auto* serve = app.add_subcommand("serve", "");
+    auto *serve = app.add_subcommand("serve", "");
     serve->callback([&]() { serve_ran = true; });
 
-    auto* info = app.add_subcommand("info", "");
+    auto *info = app.add_subcommand("info", "");
     info->callback([&]() { info_ran = true; });
 
     app.require_subcommand(1);
@@ -143,9 +142,7 @@ TEST_CASE("CLI11: option with validator rejects bad input", "[cli]") {
     int port = 0;
     app.add_option("--port", port)->check(cli::PortRange);
 
-    CHECK_THROWS_AS(
-        app.parse("--port 99999"),
-        CLI::ValidationError);
+    CHECK_THROWS_AS(app.parse("--port 99999"), CLI::ValidationError);
 }
 
 TEST_CASE("CLI11: flag parsing", "[cli]") {
@@ -172,8 +169,41 @@ TEST_CASE("visible_length: strips ANSI codes", "[cli][fmt]") {
 }
 
 TEST_CASE("colorize: wraps text with code and reset", "[cli][fmt]") {
+    const char *prev = std::getenv("NO_COLOR");
+    std::string saved = prev ? prev : "";
+    const bool had = prev != nullptr;
+    unsetenv("NO_COLOR");
+
     auto result = cli::fmt::colorize("ok", cli::fmt::color::green);
     CHECK(result == std::string("\033[32m") + "ok" + "\033[0m");
+
+    if (had)
+        setenv("NO_COLOR", saved.c_str(), 1);
+}
+
+TEST_CASE("colorize: NO_COLOR is a no-op", "[cli][fmt]") {
+    const char *prev = std::getenv("NO_COLOR");
+    std::string saved = prev ? prev : "";
+    const bool had = prev != nullptr;
+
+    setenv("NO_COLOR", "1", 1);
+    auto off = cli::fmt::colorize("ok", cli::fmt::color::green);
+    CHECK(off == "ok");
+
+    unsetenv("NO_COLOR");
+    auto on = cli::fmt::colorize("ok", cli::fmt::color::green);
+    CHECK(on == std::string("\033[32m") + "ok" + "\033[0m");
+
+    if (had)
+        setenv("NO_COLOR", saved.c_str(), 1);
+    else
+        unsetenv("NO_COLOR");
+}
+
+TEST_CASE("ProgressBar: zero total is a no-op", "[cli][fmt]") {
+    cli::fmt::ProgressBar bar(0, "none");
+    REQUIRE_NOTHROW(bar.update(1));
+    REQUIRE_NOTHROW(bar.finish());
 }
 
 TEST_CASE("Table: renders aligned output", "[cli][fmt]") {

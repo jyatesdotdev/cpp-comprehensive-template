@@ -10,8 +10,9 @@ Verlet-integration physics world, and numerical routines. Demoed in
 
 ## Files
 - `ecs.h` — `Entity` (a `uint32_t` id) and `World`: `create`, `add<T>`, `get<T>`, `remove<T>`,
-  and `each<Ts...>(fn)`. Components live in **type-erased pools** (`std::any` holding an
-  `unordered_map<Entity, T>`, keyed by `std::type_index`).
+  `destroy(e)`, and `each<Ts...>(fn)`. Components live in **type-erased pools** (`std::any`
+  holding an `unordered_map<Entity, T>`, keyed by `std::type_index` from `typeid`).
+  **`World` requires RTTI** (`-fno-rtti` is not supported).
 - `numerical.h` — `rk4` (4th-order Runge–Kutta ODE integrator) and `simpson` (Simpson's-rule
   definite integral).
 - `physics.h` — `Vec2`, `Particle`, `DistanceConstraint`, and `PhysicsWorld` (Verlet step +
@@ -22,9 +23,11 @@ Verlet-integration physics world, and numerical routines. Demoed in
    existing `T` on that entity. `get<T>` returns `T*` or `nullptr` (never throws / never
    inserts on miss). `each<Ts...>` iterates the pool of the **first** component type and skips
    entities missing any of the others (`try_get_all`). Preserve the "first pool drives
-   iteration" logic and the pointer/`optional<tuple>` matching.
-2. **Entity ids are monotonic and never reused** (`next_id_++`). There is no destroy-entity /
-   id recycling — don't assume dense or reusable ids; removing components ≠ deleting the entity.
+   iteration" logic and the pointer/`optional<tuple>` matching. Component pools are keyed by
+   `std::type_index(typeid(T))`, so **`World` requires RTTI** — do not build with `-fno-rtti`.
+2. **Entity ids are monotonic and never reused** (`next_id_++`). `destroy(e)` strips every
+   component from `e` but does **not** recycle the id. Don't assume dense or reusable ids;
+   `remove<T>` drops one component, `destroy` drops all of them.
 3. **Physics is Verlet, so velocity is implicit** in `pos - prev`. `step(dt)` must: apply
    `accel = gravity`, integrate `pos += (pos - prev) + accel*dt*dt`, set `prev` correctly, then
    run `constraint_iters` (default 4) relaxation passes. **Pinned particles never move** —

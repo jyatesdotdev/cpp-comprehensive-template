@@ -157,12 +157,14 @@ All managed by vcpkg (auto-installed on first configure via `vcpkg.json` manifes
 |---------|-----------|---------|
 | fmt | `fmt` | String formatting (`HAS_FMT`) |
 | spdlog | `spdlog` | Logging (`HAS_SPDLOG`) |
-| nlohmann/json | `nlohmann-json` | JSON parsing (`HAS_JSON`) |
+| nlohmann/json | `nlohmann-json` (else FetchContent v3.11.3) | JSON parsing (`HAS_JSON`) |
 | Catch2 3.x | `catch2` | Unit testing |
 | Google Benchmark | `benchmark` | Microbenchmarks |
-| cpp-httplib | `cpp-httplib` | HTTP server/client (api module) |
+| cpp-httplib | `cpp-httplib` (else FetchContent v0.18.3) | HTTP server/client (api module) |
 | SQLite3 | `sqlite3` | Database (database module) |
-| CLI11 2.4.2 | *(FetchContent)* | CLI argument parsing |
+| CLI11 2.4.2 | *(FetchContent, URL+SHA256)* | CLI argument parsing |
+
+`vcpkg.json` pins `builtin-baseline` `04a9d8e5212d01ee1dd9478eadd9caade4f8b0d4`.
 
 ### Optional Feature Dependencies
 

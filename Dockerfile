@@ -7,26 +7,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         g++ cmake ninja-build git curl zip unzip tar pkg-config ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install vcpkg
+# Install vcpkg (pinned to the same commit as vcpkg.json builtin-baseline)
 ENV VCPKG_ROOT=/opt/vcpkg
-RUN git clone --depth 1 https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT" \
+RUN git clone https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT" \
+    && git -C "$VCPKG_ROOT" fetch origin 04a9d8e5212d01ee1dd9478eadd9caade4f8b0d4 \
+    && git -C "$VCPKG_ROOT" checkout 04a9d8e5212d01ee1dd9478eadd9caade4f8b0d4 \
     && "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
 
 WORKDIR /src
 
-# Layer cache: install dependencies before copying source
-COPY vcpkg.json CMakeLists.txt CMakePresets.json ./
-COPY cmake/ cmake/
-RUN cmake -B build -G Ninja \
-        -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_TESTS=OFF \
-        -DBUILD_BENCHMARKS=OFF \
-        -DBUILD_DOCS=OFF \
-        -DENABLE_RENDERING=OFF \
-    || true  # allow partial configure to trigger vcpkg install
+# Layer cache: install vcpkg deps from the manifest before copying sources
+COPY vcpkg.json ./
+RUN "$VCPKG_ROOT/vcpkg" install --triplet x64-linux
 
-# Copy source and build
+COPY CMakeLists.txt CMakePresets.json ./
+COPY cmake/ cmake/
 COPY include/ include/
 COPY src/ src/
 COPY examples/ examples/
@@ -58,6 +53,3 @@ COPY --from=build /src/build/examples/hello_world .
 USER app
 ENTRYPOINT ["tini", "--"]
 CMD ["./hello_world"]
-
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-    CMD ["./hello_world"]

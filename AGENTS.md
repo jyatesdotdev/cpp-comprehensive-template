@@ -99,12 +99,12 @@ test line in `tests/CMakeLists.txt`, and an example in `examples/CMakeLists.txt`
 
 | Module | Target type | Requires | Optional (compile-def) |
 |---|---|---|---|
-| core | STATIC | Threads | fmt `HAS_FMT`, spdlog `HAS_SPDLOG`, json `HAS_JSON`, boost `HAS_BOOST` |
+| core | STATIC | Threads | fmt `HAS_FMT`, spdlog `HAS_SPDLOG`, json `HAS_JSON` |
 | memory | STATIC | — | — |
 | concurrency | INTERFACE | Threads | — |
 | hpc | INTERFACE | Threads | `<execution>` → parallel STL |
 | etl | INTERFACE | Threads | — |
-| api | INTERFACE | **cpp-httplib** (target skipped if absent) | json `HAS_JSON` |
+| api | INTERFACE | **cpp-httplib** (vcpkg, or FetchContent fallback) | json `HAS_JSON` (vcpkg or FetchContent) |
 | database | INTERFACE | **SQLite3** (target skipped if absent) | — |
 | patterns | INTERFACE | — | — |
 | rendering | INTERFACE | **`ENABLE_RENDERING` + OpenGL** (entirely `#ifdef ENABLE_GL`) | glfw, glm |

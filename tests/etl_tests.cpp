@@ -1,10 +1,13 @@
 /// @file etl_tests.cpp
 /// @brief Unit tests for ETL pipeline (map, filter, take, reduce, count, flat_map).
 
+#include "etl/map_reduce.h"
+#include "etl/pipeline.h"
+
 #include <catch2/catch_test_macros.hpp>
+#include <functional>
 #include <string>
 #include <vector>
-#include "etl/pipeline.h"
 
 using namespace etl;
 
@@ -22,10 +25,8 @@ TEST_CASE("Pipeline filter keeps matching elements", "[etl][pipeline]") {
 
 TEST_CASE("Pipeline chained map + filter", "[etl][pipeline]") {
     std::vector<int> data{1, 2, 3, 4, 5};
-    auto result = from(data)
-        .map([](int x) { return x * x; })
-        .filter([](int x) { return x > 5; })
-        .collect();
+    auto result =
+        from(data).map([](int x) { return x * x; }).filter([](int x) { return x > 5; }).collect();
     REQUIRE(result == std::vector<int>{9, 16, 25});
 }
 
@@ -48,6 +49,20 @@ TEST_CASE("Pipeline count returns element count", "[etl][pipeline]") {
     REQUIRE(n == 2);
 }
 
+TEST_CASE("Pipeline flat_map flattens nested ranges", "[etl][pipeline]") {
+    std::vector<int> data{1, 2, 3};
+    auto result = from(data).flat_map([](int x) { return std::vector<int>{x, x * 10}; }).collect();
+    REQUIRE(result == std::vector<int>{1, 10, 2, 20, 3, 30});
+}
+
+TEST_CASE("map_reduce sums squares in parallel", "[etl][map_reduce]") {
+    std::vector<int> data{1, 2, 3, 4};
+    auto sum_sq = map_reduce(data, 0, [](int x) { return x * x; }, std::plus<>{});
+    REQUIRE(sum_sq == 30);
+    auto mapped = parallel_map(data, [](int x) { return x + 1; });
+    REQUIRE(mapped == std::vector<int>{2, 3, 4, 5});
+}
+
 TEST_CASE("Pipeline on empty range", "[etl][pipeline]") {
     std::vector<int> data;
     REQUIRE(from(data).collect().empty());
@@ -61,9 +76,9 @@ SCENARIO("ETL pipeline processes CSV-like data", "[etl][bdd]") {
 
         WHEN("we filter blanks and extract names") {
             auto names = from(records)
-                .filter([](const std::string& s) { return !s.empty(); })
-                .map([](const std::string& s) { return s.substr(0, s.find(',')); })
-                .collect();
+                             .filter([](const std::string &s) { return !s.empty(); })
+                             .map([](const std::string &s) { return s.substr(0, s.find(',')); })
+                             .collect();
 
             THEN("only non-empty names are returned") {
                 REQUIRE(names.size() == 3);

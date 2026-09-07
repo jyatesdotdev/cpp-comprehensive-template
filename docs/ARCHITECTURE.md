@@ -12,7 +12,8 @@ This document describes the project structure, module hierarchy, dependency grap
 ├── .clang-tidy                # Static analysis rules
 ├── .clang-format              # Code formatting rules
 ├── cmake/
-│   └── Security.cmake         # clang-tidy, cppcheck, IWYU, Valgrind integration
+│   ├── Security.cmake         # clang-tidy, cppcheck, IWYU, Valgrind integration
+│   └── CppComprehensiveTemplateConfig.cmake.in  # install() package config
 ├── include/                   # Public headers (one subdirectory per module)
 │   ├── core/                  # App lifecycle, RAII, pimpl
 │   ├── memory/                # Smart pointers, allocators, RAII handles
@@ -22,17 +23,18 @@ This document describes the project structure, module hierarchy, dependency grap
 │   ├── api/                   # REST client/server (cpp-httplib)
 │   ├── database/              # SQLite wrapper, repository pattern
 │   ├── patterns/              # CRTP, type erasure, visitor, observer
-│   ├── rendering/             # OpenGL pipeline, shaders, scene graph
+│   ├── rendering/             # OpenGL pipeline, shaders
 │   ├── simulation/            # Physics, ECS, numerical integration
 │   └── cli/                   # CLI11 helpers, output formatting
-├── src/                       # Implementation files (mirrors include/)
+├── src/                       # Compiled modules only (`core`, `memory`)
 │   ├── core/app.cpp           # App pimpl implementation
 │   └── memory/resource_handle.cpp
 ├── examples/                  # Runnable demo programs (one per module)
-├── tests/                     # Catch2 unit tests (one per module)
+├── tests/                     # Catch2 unit tests (one per module; rendering is example-only)
 ├── benchmarks/                # Google Benchmark targets
 ├── docs/                      # Documentation and guides
-└── .github/workflows/         # CI (security scanning)
+├── LICENSE                    # MIT
+└── .github/workflows/         # CI (build/test/coverage) + security scanning
 ```
 
 ## Module / Namespace Hierarchy
@@ -67,7 +69,6 @@ Threads::Threads               ─┘
 core ──────► fmt::fmt (optional, HAS_FMT)
            ► spdlog::spdlog (optional, HAS_SPDLOG)
            ► nlohmann_json::nlohmann_json (optional, HAS_JSON)
-           ► Boost::program_options (optional, HAS_BOOST)
 
 memory ────► (no external deps)
 
@@ -77,11 +78,11 @@ hpc ────────► Threads::Threads
 
 etl ────────► Threads::Threads
 
-api ────────► httplib::httplib (required — target only created if found)
+api ────────► httplib::httplib (vcpkg/system, else FetchContent v0.18.3)
            ► nlohmann_json::nlohmann_json (optional, HAS_JSON)
            ► Threads::Threads
 
-database ──► SQLite::SQLite3 (required — target only created if found)
+database ──► SQLite3::SQLite3 (or SQLite::SQLite3; target only created if found)
 
 patterns ──► (no external deps)
 
@@ -99,7 +100,7 @@ cli ───────► CLI11::CLI11 (FetchContent)
 
 Some targets are only defined when their dependencies are found:
 
-- `api` — requires `httplib_FOUND`
+- `api` — requires `httplib_FOUND` (package or FetchContent fallback)
 - `database` — requires `SQLite3_FOUND`
 - `rendering` — requires `ENABLE_RENDERING=ON` and `OpenGL_FOUND`
 
@@ -110,7 +111,7 @@ Some targets are only defined when their dependencies are found:
 | vcpkg (required) | fmt, spdlog, nlohmann-json, catch2, benchmark, cpp-httplib, sqlite3 |
 | vcpkg (feature: rendering) | glfw3, glm, glad |
 | vcpkg (feature: boost) | boost-asio, boost-beast, boost-program-options |
-| FetchContent | CLI11 v2.4.2 |
+| FetchContent | CLI11 v2.4.2; cpp-httplib v0.18.3 and nlohmann/json v3.11.3 (if the matching `find_package` fails) |
 
 ## CMake Build System
 
@@ -136,28 +137,35 @@ Some targets are only defined when their dependencies are found:
 | `ENABLE_CPPCHECK` | OFF | cppcheck static analysis |
 | `ENABLE_IWYU` | OFF | include-what-you-use |
 | `ENABLE_VALGRIND` | OFF | Valgrind memcheck target |
+| `ENABLE_COVERAGE` | OFF | gcov/lcov instrumentation |
+| `ENABLE_WERROR` | OFF | Treat compiler warnings as errors (ON in CI presets) |
+
+`cmake --install` exports `CppComprehensiveTemplate::` targets (not `cli`) and
+`CppComprehensiveTemplateConfig.cmake`. FetchContent deps and `project_warnings` /
+`project_sanitizers` are `$<BUILD_INTERFACE:...>` only.
 
 ### Presets
 
 | Preset | Inherits | Purpose |
 |---|---|---|
-| `default` | — | Standard vcpkg build |
+| `default` | — | Standard vcpkg build (`RelWithDebInfo`) |
 | `debug` | default | Debug build |
 | `release` | default | Optimized release |
-| `ci` | default | CI: tests on, examples off |
-| `asan` | debug | AddressSanitizer |
-| `ubsan` | debug | UndefinedBehaviorSanitizer |
-| `tsan` | debug | ThreadSanitizer |
-| `msan` | debug | MemorySanitizer |
-| `asan-ubsan` | debug | ASan + UBSan combined |
-| `security-scan` | debug | clang-tidy + cppcheck |
+| `ci` | default | CI: tests on, examples off, `-Werror` |
+| `asan` | debug | AddressSanitizer (`-Werror`) |
+| `ubsan` | debug | UndefinedBehaviorSanitizer (`-Werror`) |
+| `tsan` | debug | ThreadSanitizer (`-Werror`) |
+| `msan` | debug | MemorySanitizer (`-Werror`, Clang) |
+| `asan-ubsan` | debug | ASan + UBSan combined (`-Werror`) |
+| `security-scan` | debug | clang-tidy + cppcheck (`-Werror`) |
+| `coverage` | debug | gcov coverage, 80% CI gate (`-Werror`) |
 
 ## Design Patterns Used
 
 | Pattern | Location | Description |
 |---|---|---|
 | Pimpl (pointer-to-implementation) | `core::App` | Hides implementation behind `std::unique_ptr<Impl>`, preserving ABI stability |
-| RAII | `core::App`, `memory::ResourceHandle`, `rendering::GLResource` | Resource acquisition in constructor, release in destructor |
+| RAII | `core::App`, `memory::UniqueHandle`, `rendering::gl::Resource` / `gl::Shader` / `gl::Program` | Resource acquisition in constructor, release in destructor |
 | CRTP (Curiously Recurring Template Pattern) | `patterns/crtp.h` | Static polymorphism without virtual dispatch |
 | Type Erasure | `patterns/type_erasure.h` | Runtime polymorphism without inheritance |
 | Visitor | `patterns/visitor.h` | Double dispatch via `std::variant` and `std::visit` |
@@ -176,8 +184,8 @@ Some targets are only defined when their dependencies are found:
 - [Tutorial](TUTORIAL.md) — New developer walkthrough
 - [Toolchain](TOOLCHAIN.md) — Required tools, versions, IDE setup
 - [Extending](EXTENDING.md) — Adding libraries, examples, tests, dependencies
-- [API Design](api_design.md) — REST API patterns
-- [Best Practices](best_practices.md) — C++ coding guidelines
+- [C++ API guidelines](api_design.md) — C++ API design (not REST)
+- [Best Practices](best_practices.md) — C++20 guidelines (C++23 called out as future)
 - [CLI](cli.md) — Command-line interface design
 - [Cross-Platform Build](cross_platform_build.md) — Platform-specific build notes
 - [HPC Optimization](hpc_optimization.md) — SIMD and parallel performance

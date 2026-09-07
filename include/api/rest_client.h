@@ -27,31 +27,34 @@ using json = nlohmann::json;
 ///   auto [status, body] = client.get_json("/items");
 /// @endcode
 class RestClient {
-public:
+  public:
     /// @brief Construct a client connected to the given host and port.
     /// @param host Server hostname or IP address.
     /// @param port Server TCP port.
-    RestClient(const std::string& host, int port)
-        : client_(host, port) {}
+    RestClient(const std::string &host, int port) : client_(host, port) {
+        client_.set_connection_timeout(5, 0);
+        client_.set_read_timeout(30, 0);
+        client_.set_write_timeout(30, 0);
+    }
 
     /// @brief Plain HTTP response (status code + body string).
     struct RawResponse {
-        int status;        ///< HTTP status code.
-        std::string body;  ///< Response body as a string.
+        int status;       ///< HTTP status code.
+        std::string body; ///< Response body as a string.
     };
 
 #ifdef HAS_JSON
     /// @brief JSON HTTP response (status code + parsed JSON body).
     struct JsonResponse {
-        int status;  ///< HTTP status code.
-        json body;   ///< Parsed JSON response body.
+        int status; ///< HTTP status code.
+        json body;  ///< Parsed JSON response body.
     };
 
     /// @brief Perform a GET request and parse the response as JSON.
     /// @param path Request path (e.g., "/items").
     /// @return JsonResponse with status and parsed body.
     /// @throws std::runtime_error If the request fails.
-    JsonResponse get_json(const std::string& path) {
+    JsonResponse get_json(const std::string &path) {
         auto res = client_.Get(path);
         check(res);
         return {res->status, json::parse(res->body)};
@@ -62,7 +65,7 @@ public:
     /// @param data JSON object to send as the request body.
     /// @return JsonResponse with status and parsed body.
     /// @throws std::runtime_error If the request fails.
-    JsonResponse post_json(const std::string& path, const json& data) {
+    JsonResponse post_json(const std::string &path, const json &data) {
         auto res = client_.Post(path, data.dump(), "application/json");
         check(res);
         return {res->status, res->body.empty() ? json{} : json::parse(res->body)};
@@ -73,7 +76,7 @@ public:
     /// @param data JSON object to send as the request body.
     /// @return JsonResponse with status and parsed body.
     /// @throws std::runtime_error If the request fails.
-    JsonResponse put_json(const std::string& path, const json& data) {
+    JsonResponse put_json(const std::string &path, const json &data) {
         auto res = client_.Put(path, data.dump(), "application/json");
         check(res);
         return {res->status, res->body.empty() ? json{} : json::parse(res->body)};
@@ -84,7 +87,7 @@ public:
     /// @param path Request path.
     /// @return RawResponse with status and body string.
     /// @throws std::runtime_error If the request fails.
-    RawResponse get(const std::string& path) {
+    RawResponse get(const std::string &path) {
         auto res = client_.Get(path);
         check(res);
         return {res->status, res->body};
@@ -94,7 +97,7 @@ public:
     /// @param path Request path.
     /// @return RawResponse with status and body string.
     /// @throws std::runtime_error If the request fails.
-    RawResponse del(const std::string& path) {
+    RawResponse del(const std::string &path) {
         auto res = client_.Delete(path);
         check(res);
         return {res->status, res->body};
@@ -102,13 +105,12 @@ public:
 
     /// @brief Access underlying httplib::Client for advanced configuration.
     /// @return Reference to the internal httplib::Client.
-    httplib::Client& raw() { return client_; }
+    httplib::Client &raw() { return client_; }
 
-private:
-    static void check(const httplib::Result& res) {
+  private:
+    static void check(const httplib::Result &res) {
         if (!res) {
-            throw std::runtime_error("HTTP request failed: " +
-                                     httplib::to_string(res.error()));
+            throw std::runtime_error("HTTP request failed: " + httplib::to_string(res.error()));
         }
     }
 

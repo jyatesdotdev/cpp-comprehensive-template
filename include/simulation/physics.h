@@ -7,6 +7,7 @@
 
 #include <cmath>
 #include <cstddef>
+#include <stdexcept>
 #include <vector>
 
 namespace simulation {
@@ -28,10 +29,10 @@ struct Vec2 {
 
 /// @brief A point-mass particle for Verlet integration.
 struct Particle {
-    Vec2 pos;       ///< Current position.
-    Vec2 prev;      ///< Previous position (Verlet stores velocity implicitly).
-    Vec2 accel;     ///< Accumulated acceleration this frame.
-    double mass{1}; ///< Particle mass (default 1).
+    Vec2 pos;           ///< Current position.
+    Vec2 prev;          ///< Previous position (Verlet stores velocity implicitly).
+    Vec2 accel;         ///< Accumulated acceleration this frame.
+    double mass{1};     ///< Particle mass (default 1).
     bool pinned{false}; ///< If true, particle is immovable.
 };
 
@@ -44,7 +45,7 @@ struct DistanceConstraint {
 
 /// @brief Simple Verlet physics world with particles and distance constraints.
 class PhysicsWorld {
-public:
+  public:
     Vec2 gravity{0.0, -9.81}; ///< Global gravity acceleration.
 
     /// @brief Add a particle to the world.
@@ -61,6 +62,9 @@ public:
     /// @param a Index of the first particle.
     /// @param b Index of the second particle.
     void add_constraint(std::size_t a, std::size_t b) {
+        if (a >= particles_.size() || b >= particles_.size() || a == b) {
+            throw std::out_of_range("add_constraint: invalid particle index");
+        }
         double d = (particles_[a].pos - particles_[b].pos).length();
         constraints_.push_back({a, b, d});
     }
@@ -70,8 +74,9 @@ public:
     /// @param constraint_iters Number of constraint relaxation iterations (default 4).
     void step(double dt, int constraint_iters = 4) {
         // Apply gravity and integrate (Verlet).
-        for (auto& p : particles_) {
-            if (p.pinned) continue;
+        for (auto &p : particles_) {
+            if (p.pinned)
+                continue;
             p.accel = gravity;
             Vec2 vel = p.pos - p.prev;
             p.prev = p.pos;
@@ -79,27 +84,34 @@ public:
         }
         // Satisfy constraints via relaxation.
         for (int i = 0; i < constraint_iters; ++i) {
-            for (auto& c : constraints_) {
-                auto& pa = particles_[c.a];
-                auto& pb = particles_[c.b];
+            for (auto &c : constraints_) {
+                auto &pa = particles_[c.a];
+                auto &pb = particles_[c.b];
                 Vec2 delta = pb.pos - pa.pos;
                 double dist = delta.length();
-                if (dist < 1e-12) continue;
-                double diff = (dist - c.rest_length) / dist * 0.5;
-                Vec2 offset = delta * diff;
-                if (!pa.pinned) pa.pos = pa.pos + offset;
-                if (!pb.pinned) pb.pos = pb.pos - offset;
+                if (dist < 1e-12)
+                    continue;
+                const double corr = (dist - c.rest_length) / dist;
+                if (!pa.pinned && !pb.pinned) {
+                    Vec2 offset = delta * (corr * 0.5);
+                    pa.pos = pa.pos + offset;
+                    pb.pos = pb.pos - offset;
+                } else if (!pa.pinned) {
+                    pa.pos = pa.pos + delta * corr;
+                } else if (!pb.pinned) {
+                    pb.pos = pb.pos - delta * corr;
+                }
             }
         }
     }
 
     /// @brief Read-only access to all particles.
     /// @return Const reference to the particle vector.
-    [[nodiscard]] const std::vector<Particle>& particles() const { return particles_; }
+    [[nodiscard]] const std::vector<Particle> &particles() const { return particles_; }
 
-private:
+  private:
     std::vector<Particle> particles_;
     std::vector<DistanceConstraint> constraints_;
 };
 
-}  // namespace simulation
+} // namespace simulation
