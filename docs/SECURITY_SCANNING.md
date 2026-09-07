@@ -179,9 +179,11 @@ with the `ci` preset (`ENABLE_WERROR=ON`) and enforces **≥80% line coverage** 
 - clang-tidy + cppcheck (`security-scan`, `-Werror`); fails on `cert-*` / `clang-analyzer-security`
 - ASan + UBSan
 - ThreadSanitizer
-- MemorySanitizer (Clang). vcpkg libraries are **not** MSan-instrumented, so third-party
-  frames can false-positive — the job still gates *our* objects
 - Trivy filesystem scan (SARIF)
+
+MemorySanitizer is **not** a CI job: Catch2 from vcpkg is not MSan-instrumented (false
+positives during `catch_discover_tests`). Use the `msan` preset locally with an instrumented
+libc++ if you need it.
 
 Sanitizer, coverage, and `security-scan` presets all set `ENABLE_WERROR=ON`.
 

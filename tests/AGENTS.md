@@ -5,9 +5,9 @@ Scope: `tests/`. Parent: [root AGENTS.md](../AGENTS.md). Framework: **Catch2 v3*
 ## Layout & business rules
 - **One test file per module**, named `<module>_tests.cpp`. Current targets (from
   `CMakeLists.txt`): `core`, `memory`, `concurrency`, `etl`, `patterns`, `simulation`, `cli`,
-  `hpc`, plus `api` (when `httplib_FOUND`) and `database` (when `SQLite3_FOUND`).
-  `rendering` has no test target because CI has no GL context — keep it that way unless you
-  add an offscreen/headless path. Rendering stays example-only without a display.
+  `hpc`, plus `api` (when `httplib_FOUND`, skipped under TSan/MSan — httplib is not sanitizer-safe)
+  and `database` (when `SQLite3_FOUND`). `rendering` has no test target because CI has no GL
+  context — keep it that way unless you add an offscreen/headless path. Rendering stays example-only without a display.
 - Tests only build when **`Catch2_FOUND`** (the whole dir `return()`s early otherwise) and when
   `BUILD_TESTS=ON` (default).
 - Registration is one line via the local helper:

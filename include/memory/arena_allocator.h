@@ -13,6 +13,10 @@
 #include <memory>
 #include <new>
 
+#if defined(_MSC_VER)
+#include <malloc.h>
+#endif
+
 namespace memory {
 
 /// @brief Owns a contiguous memory block. Allocations bump a cursor forward;
@@ -31,13 +35,23 @@ class Arena {
             throw std::bad_alloc{};
         }
         const auto rounded = (capacity + alignment - 1) & ~(alignment - 1);
+#if defined(_MSC_VER)
+        buf_ = static_cast<std::byte *>(_aligned_malloc(rounded, alignment));
+#else
         buf_ = static_cast<std::byte *>(std::aligned_alloc(alignment, rounded));
+#endif
         if (!buf_)
             throw std::bad_alloc{};
         capacity_ = rounded;
     }
 
-    ~Arena() { std::free(buf_); }
+    ~Arena() {
+#if defined(_MSC_VER)
+        _aligned_free(buf_);
+#else
+        std::free(buf_);
+#endif
+    }
 
     Arena(const Arena &) = delete;
     Arena &operator=(const Arena &) = delete;

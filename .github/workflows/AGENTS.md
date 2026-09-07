@@ -15,10 +15,9 @@ Scope: `.github/workflows/`. Parent: [root AGENTS.md](../../AGENTS.md). Runs on 
   **fails on any `cert-*` or `clang-analyzer-security` warning**.
 - **ASan + UBSan**: `asan-ubsan` preset → build → test (leak detection on).
 - **ThreadSanitizer**: `tsan` preset → build → test (data-race detection).
-- **MemorySanitizer**: `msan` preset on Clang (`CC=clang CXX=clang++`). Requires instrumented
-  deps; vcpkg libraries are not MSan-built, so this job can report false positives on
-  third-party code — still a gate for *our* objects.
 - **Trivy**: filesystem vulnerability scan → uploads SARIF (needs `security-events: write`).
+  MSan is **local-only** (`msan` preset): vcpkg Catch2 is not MSan-instrumented, so CI cannot
+  run it as a gate.
 
 ## Rules for editing CI (learn from the git history)
 1. **Presets are the interface.** Jobs invoke `cmake --preset <x>` / `ctest --preset <x>` — they
@@ -32,7 +31,7 @@ Scope: `.github/workflows/`. Parent: [root AGENTS.md](../../AGENTS.md). Runs on 
 3. **Least privilege.** `security.yml` declares `permissions: security-events: write, contents:
    read`. Add scopes only when a step needs them (SARIF upload needed `security-events`).
 4. **Pin/trust actions deliberately.** `actions/checkout@v4`, `codeql-action/upload-sarif@v3`,
-   and `trivy-action@0.28.0` are version-pinned. Do not float `@master`.
+   and `trivy-action@0.35.0` are version-pinned. Do not float `@master`.
 5. Sanitizers are **mutually exclusive** (ASan/TSan/MSan) — that's why ASan+UBSan and TSan are
    separate jobs. Don't merge them.
 
@@ -43,6 +42,5 @@ cmake --preset coverage    && cmake --build --preset coverage    && ctest --pres
 cmake --preset security-scan && cmake --build --preset security-scan
 cmake --preset asan-ubsan  && cmake --build --preset asan-ubsan  && ctest --preset asan-ubsan
 cmake --preset tsan        && cmake --build --preset tsan        && ctest --preset tsan
-CC=clang CXX=clang++ cmake --preset msan && cmake --build --preset msan && ctest --preset msan
 ```
 Everything needs `VCPKG_ROOT` set. Background: [docs/SECURITY_SCANNING.md](../../docs/SECURITY_SCANNING.md).

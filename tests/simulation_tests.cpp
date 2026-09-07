@@ -8,6 +8,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <cmath>
+#include <numbers>
 #include <stdexcept>
 
 using Catch::Matchers::WithinAbs;
@@ -21,7 +22,7 @@ TEST_CASE("Simpson's rule integrates polynomials exactly", "[simulation][numeric
 
 TEST_CASE("Simpson's rule integrates sin(x) over [0, pi]", "[simulation][numerical]") {
     // ∫₀^π sin(x) dx = 2
-    auto result = simpson([](double x) { return std::sin(x); }, 0.0, M_PI, 1000);
+    auto result = simpson([](double x) { return std::sin(x); }, 0.0, std::numbers::pi, 1000);
     REQUIRE_THAT(result, WithinAbs(2.0, 1e-8));
 }
 

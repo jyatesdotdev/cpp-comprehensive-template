@@ -1,7 +1,11 @@
 #pragma once
 
 /// @file thread_pool.h
-/// @brief A modern C++20 thread pool with std::jthread and cooperative cancellation.
+/// @brief A C++20 thread pool with cooperative cancellation.
+///
+/// Uses `std::jthread` when the library provides it (`__cpp_lib_jthread`);
+/// otherwise `std::thread` plus an explicit join in the destructor (Apple
+/// libc++ on some SDKs has no `std::jthread`).
 
 #include <condition_variable>
 #include <functional>
@@ -12,26 +16,48 @@
 #include <type_traits>
 #include <vector>
 
+#if defined(__cpp_lib_jthread)
+#include <stop_token>
+#endif
+
 namespace concurrency {
 
 /// Fixed-size thread pool. Enqueue callables and receive std::future results.
-/// Uses std::jthread for automatic join on destruction.
 class ThreadPool {
   public:
     /// @brief Construct a thread pool with @p n worker threads.
     /// @param n Number of worker threads (defaults to hardware concurrency; minimum 1).
     explicit ThreadPool(unsigned n = std::thread::hardware_concurrency()) {
-        for (unsigned i = 0; i < (n ? n : 1u); ++i) {
-            workers_.emplace_back([this](std::stop_token st) { run(st); });
+        const unsigned count = n ? n : 1u;
+        workers_.reserve(count);
+        for (unsigned i = 0; i < count; ++i) {
+#if defined(__cpp_lib_jthread)
+            workers_.emplace_back(
+                [this](std::stop_token st) { run([&] { return st.stop_requested(); }); });
+#else
+            workers_.emplace_back([this] { run([&] { return stop_; }); });
+#endif
         }
     }
 
-    /// @brief Destroy the pool, requesting cooperative stop on all workers.
+    /// @brief Destroy the pool, draining queued work then joining workers.
     ~ThreadPool() {
-        // Request stop on all jthreads (auto-joined).
+#if defined(__cpp_lib_jthread)
         for (auto &w : workers_)
             w.request_stop();
+#else
+        {
+            std::lock_guard lk{mu_};
+            stop_ = true;
+        }
+#endif
         cv_.notify_all();
+#if !defined(__cpp_lib_jthread)
+        for (auto &w : workers_) {
+            if (w.joinable())
+                w.join();
+        }
+#endif
     }
 
     ThreadPool(const ThreadPool &) = delete;
@@ -64,12 +90,12 @@ class ThreadPool {
     [[nodiscard]] std::size_t size() const noexcept { return workers_.size(); }
 
   private:
-    void run(std::stop_token st) {
+    template <typename StopPred> void run(StopPred stop_pred) {
         for (;;) {
             std::function<void()> task;
             {
                 std::unique_lock lk{mu_};
-                cv_.wait(lk, [&] { return st.stop_requested() || !tasks_.empty(); });
+                cv_.wait(lk, [&] { return stop_pred() || !tasks_.empty(); });
                 if (tasks_.empty())
                     return; // stop requested; queue drained
                 task = std::move(tasks_.front());
@@ -79,12 +105,17 @@ class ThreadPool {
         }
     }
 
-    // workers_ must be declared last so jthreads join before mu_/cv_/tasks_
+    // workers_ must be declared last so joins happen before mu_/cv_/tasks_
     // are destroyed (members are destroyed in reverse declaration order).
     std::queue<std::function<void()>> tasks_;
     std::mutex mu_;
     std::condition_variable cv_;
+#if !defined(__cpp_lib_jthread)
+    bool stop_{false};
+    std::vector<std::thread> workers_;
+#else
     std::vector<std::jthread> workers_;
+#endif
 };
 
 } // namespace concurrency

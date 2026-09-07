@@ -15,10 +15,8 @@
 #include <utility>
 #include <vector>
 
-using namespace concurrency;
-
 TEST_CASE("SpscQueue single-threaded push/pop", "[concurrency][spsc]") {
-    SpscQueue<int, 8> q;
+    concurrency::SpscQueue<int, 8> q;
     REQUIRE(q.empty());
 
     SECTION("push and pop single element") {
@@ -34,7 +32,7 @@ TEST_CASE("SpscQueue single-threaded push/pop", "[concurrency][spsc]") {
     }
 
     SECTION("push to full returns false") {
-        REQUIRE(SpscQueue<int, 8>::capacity() == 7);
+        REQUIRE(concurrency::SpscQueue<int, 8>::capacity() == 7);
         for (int i = 0; i < 7; ++i) // capacity 8 holds 7 elements (ring buffer)
             REQUIRE(q.push(i));
         REQUIRE_FALSE(q.push(99));
@@ -51,7 +49,7 @@ TEST_CASE("SpscQueue single-threaded push/pop", "[concurrency][spsc]") {
 }
 
 TEST_CASE("SpscQueue push rvalue overload", "[concurrency][spsc]") {
-    SpscQueue<std::string, 4> q;
+    concurrency::SpscQueue<std::string, 4> q;
     std::string s = "hello";
     REQUIRE(q.push(std::move(s)));
     auto val = q.pop();
@@ -61,7 +59,7 @@ TEST_CASE("SpscQueue push rvalue overload", "[concurrency][spsc]") {
 
 TEST_CASE("SpscQueue cross-thread correctness", "[concurrency][spsc]") {
     constexpr int N = 10'000;
-    SpscQueue<int, 16384> q;
+    concurrency::SpscQueue<int, 16384> q;
 
     std::thread producer([&] {
         for (int i = 0; i < N; ++i)
@@ -91,7 +89,7 @@ TEST_CASE("SpscQueue cross-thread correctness", "[concurrency][spsc]") {
 TEST_CASE("ThreadPool executes work and drains on destroy", "[concurrency][pool]") {
     std::future<int> f;
     {
-        ThreadPool pool{2};
+        concurrency::ThreadPool pool{2};
         REQUIRE(pool.size() == 2);
         f = pool.submit([] { return 41 + 1; });
         auto g = pool.submit([] { return 7; });
@@ -102,14 +100,14 @@ TEST_CASE("ThreadPool executes work and drains on destroy", "[concurrency][pool]
 
 TEST_CASE("parallel_for visits every element", "[concurrency][parallel]") {
     std::vector<int> v(128, 0);
-    parallel_for(v.begin(), v.end(), [](int &x) { x = 1; });
+    concurrency::parallel_for(v.begin(), v.end(), [](int &x) { x = 1; });
     REQUIRE(std::all_of(v.begin(), v.end(), [](int x) { return x == 1; }));
 }
 
 TEST_CASE("parallel_map_reduce sums squares", "[concurrency][parallel]") {
     std::vector<int> v(32);
     std::iota(v.begin(), v.end(), 1);
-    auto sum =
-        parallel_map_reduce(v.begin(), v.end(), 0, [](int x) { return x * x; }, std::plus<>{});
+    auto sum = concurrency::parallel_map_reduce(
+        v.begin(), v.end(), 0, [](int x) { return x * x; }, std::plus<>{});
     REQUIRE(sum == 32 * 33 * 65 / 6); // n(n+1)(2n+1)/6
 }

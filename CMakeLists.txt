@@ -46,8 +46,11 @@ target_compile_options(project_warnings INTERFACE
         -Wconversion -Wsign-conversion -Wnull-dereference
     >
     $<$<CXX_COMPILER_ID:MSVC>:
-        /W4 /permissive-
+        /W4 /permissive- /wd4324
     >
+)
+target_compile_definitions(project_warnings INTERFACE
+    $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>
 )
 if(ENABLE_WERROR)
     target_compile_options(project_warnings INTERFACE

@@ -10,6 +10,23 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <string>
+
+#if defined(_WIN32)
+static void env_set(const char *key, const char *value) {
+    _putenv_s(key, value);
+}
+static void env_unset(const char *key) {
+    _putenv_s(key, "");
+}
+#else
+static void env_set(const char *key, const char *value) {
+    setenv(key, value, 1);
+}
+static void env_unset(const char *key) {
+    unsetenv(key);
+}
+#endif
 
 // ── Helper: write a temp config file ────────────────────────────────
 
@@ -172,13 +189,13 @@ TEST_CASE("colorize: wraps text with code and reset", "[cli][fmt]") {
     const char *prev = std::getenv("NO_COLOR");
     std::string saved = prev ? prev : "";
     const bool had = prev != nullptr;
-    unsetenv("NO_COLOR");
+    env_unset("NO_COLOR");
 
     auto result = cli::fmt::colorize("ok", cli::fmt::color::green);
     CHECK(result == std::string("\033[32m") + "ok" + "\033[0m");
 
     if (had)
-        setenv("NO_COLOR", saved.c_str(), 1);
+        env_set("NO_COLOR", saved.c_str());
 }
 
 TEST_CASE("colorize: NO_COLOR is a no-op", "[cli][fmt]") {
@@ -186,18 +203,18 @@ TEST_CASE("colorize: NO_COLOR is a no-op", "[cli][fmt]") {
     std::string saved = prev ? prev : "";
     const bool had = prev != nullptr;
 
-    setenv("NO_COLOR", "1", 1);
+    env_set("NO_COLOR", "1");
     auto off = cli::fmt::colorize("ok", cli::fmt::color::green);
     CHECK(off == "ok");
 
-    unsetenv("NO_COLOR");
+    env_unset("NO_COLOR");
     auto on = cli::fmt::colorize("ok", cli::fmt::color::green);
     CHECK(on == std::string("\033[32m") + "ok" + "\033[0m");
 
     if (had)
-        setenv("NO_COLOR", saved.c_str(), 1);
+        env_set("NO_COLOR", saved.c_str());
     else
-        unsetenv("NO_COLOR");
+        env_unset("NO_COLOR");
 }
 
 TEST_CASE("ProgressBar: zero total is a no-op", "[cli][fmt]") {

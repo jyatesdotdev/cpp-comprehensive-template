@@ -10,8 +10,8 @@ Reusable threading primitives. This is one of the most **safety-critical** modul
 **ThreadSanitizer** (`tsan` preset). Any data race here fails the build.
 
 ## Files
-- `thread_pool.h` — `ThreadPool`: fixed-size pool of `std::jthread`; `submit(f, args...)`
-  returns `std::future`. Cooperative shutdown via `std::stop_token`.
+- `thread_pool.h` — `ThreadPool`: fixed-size pool; `submit(f, args...)` returns `std::future`.
+  Uses `std::jthread` when `__cpp_lib_jthread` is defined, else `std::thread` + explicit join.
 - `lock_free_queue.h` — `SpscQueue<T, Cap>`: single-producer/single-consumer ring buffer,
   no mutex, `std::atomic` with acquire/release ordering.
 - `parallel.h` — `parallel_for` and `parallel_map_reduce` free functions built on `std::async`.
@@ -28,12 +28,11 @@ Reusable threading primitives. This is one of the most **safety-critical** modul
    observes with `acquire`. Do not relax these to `relaxed` or "simplify" them; TSan/readers
    rely on the happens-before edge. Element type must be default-constructible (the buffer is
    value-initialized) and cheaply movable.
-4. `ThreadPool` uses `std::jthread` (auto-joins) + `request_stop()` in the destructor.
-   Workers **drain remaining tasks** after stop so waiters do not see a broken promise.
-   `workers_` is declared **last** so joins happen before `mu_`/`cv_`/`tasks_` are destroyed.
-   Do not detach workers or add a raw `std::thread`. `submit` wraps the call in a
-   `std::packaged_task` and returns its `future` — exceptions propagate through `future.get()`.
-   Copy and move are deleted.
+4. `ThreadPool` drains remaining tasks on destruction so waiters do not see a broken promise.
+   Prefer `std::jthread` when the library has it; otherwise `std::thread` **joined in the
+   destructor body** (never detached). `workers_` is declared **last** so joins happen before
+   `mu_`/`cv_`/`tasks_` are destroyed. `submit` wraps the call in a `std::packaged_task` and
+   returns its `future` — exceptions propagate through `future.get()`. Copy and move are deleted.
 5. Guard shared state (`tasks_`, the queue) with the existing `mutex`/`condition_variable`;
    `notify_one` on submit, `notify_all` on shutdown.
 6. `parallel_for`/`parallel_map_reduce` **capture the user function by reference** and

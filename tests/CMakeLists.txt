@@ -22,7 +22,8 @@ add_catch_test(simulation_tests  simulation)
 add_catch_test(cli_tests         cli)
 add_catch_test(hpc_tests         hpc)
 
-if(httplib_FOUND)
+# cpp-httplib is not TSan/MSan-safe (and MSan cannot instrument vcpkg Catch2).
+if(httplib_FOUND AND NOT ENABLE_TSAN AND NOT ENABLE_MSAN)
     add_catch_test(api_tests api)
 endif()
 if(SQLite3_FOUND)
